@@ -4,17 +4,18 @@
 package Game.Menus;
 
 import Game.Battle;
-import Game.Battle;
-import Game.Cursor;
 import Game.Cursor;
 import Game.Level;
-import Game.Level;
-import Sprites.Character;
+import Game.Sound.SoundManager;
+import Sprites.Animation;
+import Sprites.AnimationFactory;
+import Sprites.Text;
 import Sprites.ImageComponent;
-import Units.Items.WeaponFactory;
-import Units.Unit;
-import java.awt.Dimension;
-import java.util.ArrayList;
+import Sprites.Panels.GameScreen;
+import Units.Items.Equipment;
+import Units.Items.Item;
+import Units.Items.ItemFactory;
+import Units.Items.Weapon;
 
 public class MenuSelectionAttack extends MenuSelection{
     
@@ -24,6 +25,7 @@ public class MenuSelectionAttack extends MenuSelection{
     private final static String[] labelsName = {"HP", "Dmg", "Acc", "Crit" };
     
     private ImageComponent attackerName;
+        private Animation attackerWeaponTriangleIndicator;
         private ImageComponent attackerItemIcon;
         private ImageComponent attackerHP;
         private ImageComponent attackerDmg;
@@ -31,6 +33,7 @@ public class MenuSelectionAttack extends MenuSelection{
         private ImageComponent attackerCrit;
     
     private ImageComponent defenderName;
+        private Animation defenderWeaponTriangleIndicator;
         private ImageComponent defenderItemIcon;
         private ImageComponent defenderItemName;
         private ImageComponent defenderHP;
@@ -39,60 +42,66 @@ public class MenuSelectionAttack extends MenuSelection{
         private ImageComponent defenderCrit;
         
     private Battle battle;
-    // TODO: weapon triangle advantage stuff
     
-    public MenuSelectionAttack(Level level, Dimension mapSize, Cursor cursor) {
+    public MenuSelectionAttack(Level level, GameScreen gameScreen, 
+            SoundManager soundManager, Cursor cursor) {
         
-        super(level, mapSize, cursor);
+        super(level, gameScreen, soundManager, cursor);
         
         background = new ImageComponent("resources/gui/window/attackMenuBlank.png");
         
         labels = new ImageComponent[labelsName.length];
         for (int i = 0; i < labels.length; i++)
         {
-            labels[i] = Character.getImageComponent(labelsName[i], Character.YELLOW);
+            labels[i] = Text.getImageComponent(labelsName[i], Text.YELLOW);
             labels[i].setLocation(27, 22 + 16*i);
             add(labels[i]);
         }
         
-        attackerName = Character.getImageComponent("Alan");
+        attackerName = Text.getImageComponent("Alan");
         attackerName.setLocation(21 + (43 - attackerName.getWidth()) / 2, 6);
         add(attackerName);
-        attackerItemIcon = WeaponFactory.swordIron().getIcon();
+        attackerWeaponTriangleIndicator = AnimationFactory.newArrowUp();
+        attackerWeaponTriangleIndicator.setLocation(11,8);
+        add(attackerWeaponTriangleIndicator);
+        attackerItemIcon = ItemFactory.swordIron().getIcon();
         attackerItemIcon.setLocation(4, 3);
         add(attackerItemIcon);
-        attackerHP = Character.getImageComponent(String.valueOf(0));
+        attackerHP = Text.getImageComponent(String.valueOf(0));
         attackerHP.setLocation(68 - attackerHP.getWidth(), 22);
         add(attackerHP);
-        attackerDmg = Character.getImageComponent(String.valueOf(0));
+        attackerDmg = Text.getImageComponent(String.valueOf(0));
         attackerDmg.setLocation(68 - attackerDmg.getWidth(), 38);
         add(attackerDmg);
-        attackerAcc = Character.getImageComponent(String.valueOf(0));
+        attackerAcc = Text.getImageComponent(String.valueOf(0));
         attackerAcc.setLocation(68 - attackerAcc.getWidth(), 54);
         add(attackerAcc);
-        attackerCrit = Character.getImageComponent(String.valueOf(0));
+        attackerCrit = Text.getImageComponent(String.valueOf(0));
         attackerCrit.setLocation(68 - attackerCrit.getWidth(), 70);
         add(attackerCrit);
         
-        defenderName = Character.getImageComponent("Damas");
+        defenderName = Text.getImageComponent("Damas");
         defenderName.setLocation(5 + (43 - defenderName.getWidth()) / 2, 86);
         add(defenderName);
-        defenderItemIcon = WeaponFactory.axeIron().getIcon();
+        defenderWeaponTriangleIndicator = AnimationFactory.newArrowDown();
+        defenderWeaponTriangleIndicator.setLocation(63,88);
+        add(defenderWeaponTriangleIndicator);
+        defenderItemIcon = ItemFactory.axeIron().getIcon();
         defenderItemIcon.setLocation(52, 83);
         add(defenderItemIcon);
-        defenderItemName = Character.getImageComponent("Steel Axe");
+        defenderItemName = Text.getImageComponent("Steel Axe");
         defenderItemName.setLocation(5 + (51 - defenderItemName.getWidth()) / 2, 102);
         add(defenderItemName);
-        defenderHP = Character.getImageComponent(String.valueOf(0));
+        defenderHP = Text.getImageComponent(String.valueOf(0));
         defenderHP.setLocation(20 - defenderHP.getWidth(), 22);
         add(defenderHP);
-        defenderDmg = Character.getImageComponent(String.valueOf(0));
+        defenderDmg = Text.getImageComponent(String.valueOf(0));
         defenderDmg.setLocation(20 - defenderDmg.getWidth(), 38);
         add(defenderDmg);
-        defenderAcc = Character.getImageComponent(String.valueOf(0));
+        defenderAcc = Text.getImageComponent(String.valueOf(0));
         defenderAcc.setLocation(20 - defenderAcc.getWidth(), 54);
         add(defenderAcc);
-        defenderCrit = Character.getImageComponent(String.valueOf(0));
+        defenderCrit = Text.getImageComponent(String.valueOf(0));
         defenderCrit.setLocation(20 - defenderCrit.getWidth(), 70);
         add(defenderCrit);
         
@@ -102,63 +111,105 @@ public class MenuSelectionAttack extends MenuSelection{
         setPreferredSize(getSize());
     }
     
-    public final void reconstructMenu() {
-        battle = new Battle(level, cursor.getSelectedUnit(), getTargetedUnit());
+    @Override
+    public void openQuietly(CancelListener cancelListener) {
+        openQuietly(level.getMap().getUnitsAt(getActor().getAttackablePoints()), cancelListener);
+        level.getPanelEffectsTile().updateAttackablePoints(getActor().getAttackablePoints());
+    }
+    @Override
+    public final void reconstructMenu(int index) {
+        battle = new Battle(level, getActor(), getTarget(index));
         
-        attackerName.setImage(Character.getImageComponent(battle.getAttacking().getName()));
+        attackerName.setImage(Text.getImageComponent(battle.getAttacking().getName()));
         attackerName.setLocation(21 + (43 - attackerName.getWidth()) / 2, 6);
+        
+        attackerWeaponTriangleIndicator.loadAnimation(battle.getAttackingWeaponTriangleIndicator());
         
         attackerItemIcon.setImage(battle.getAttackerEquiped().getIcon());
         
-        attackerHP.setImage(Character.getImageComponent(String.valueOf(battle.getAttackerHP())));
+        attackerHP.setImage(Text.getImageComponent(String.valueOf(battle.getAttackerHP())));
         attackerHP.setLocation(68 - attackerHP.getWidth(), 22);
         
-        attackerDmg.setImage(Character.getImageComponent(String.valueOf(battle.getAttackerDamage())));
-        attackerAcc.setImage(Character.getImageComponent(String.valueOf(battle.getAttackerAccuracy())));
-        attackerCrit.setImage(Character.getImageComponent(String.valueOf(battle.getAttackerCriticalChance())));
+        attackerDmg.setImage(Text.getImageComponent(String.valueOf(battle.getAttackerDamage())));
+        attackerAcc.setImage(Text.getImageComponent(String.valueOf(battle.getAttackerAccuracy())));
+        attackerCrit.setImage(Text.getImageComponent(String.valueOf(battle.getAttackerCriticalChance())));
         attackerDmg.setLocation(68 - attackerDmg.getWidth(), 38);
         attackerAcc.setLocation(68 - attackerAcc.getWidth(), 54);
         attackerCrit.setLocation(68 - attackerCrit.getWidth(), 70);
         
-        defenderName.setImage(Character.getImageComponent(battle.getDefending().getName()));
+        defenderName.setImage(Text.getImageComponent(battle.getDefending().getName()));
         defenderName.setLocation(5 + (43 - defenderName.getWidth()) / 2, 86);
         
-        defenderItemIcon.setImage(battle.getDefenderEquiped().getIcon());
+        if(battle.getDefending().hasEquiped())
+        {
+            defenderItemIcon.setImage(battle.getDefending().getEquiped().getIcon());
+            defenderItemName.setImage(Text.getImageComponent(battle.getDefending().getEquiped().getName()));
+        }
+        else
+        {
+            defenderItemIcon.setBlank();
+            defenderItemName.setImage(Text.getImageComponent("--"));
+        }
         
-        defenderItemName.setImage(Character.getImageComponent(battle.getDefenderEquiped().getName()));
+        defenderWeaponTriangleIndicator.loadAnimation(battle.getDefendingWeaponTriangleIndicator());
+        
         defenderItemName.setLocation(5 + (51 - defenderItemName.getWidth()) / 2, 102);
         
-        defenderHP.setImage(Character.getImageComponent(String.valueOf(battle.getDefenderHP())));
+        defenderHP.setImage(Text.getImageComponent(String.valueOf(battle.getDefenderHP())));
         defenderHP.setLocation(20 - defenderHP.getWidth(), 22);
         
         if (battle.getDefending().canAttack(battle.getAttacking()))
         {
-        defenderDmg.setImage(Character.getImageComponent(String.valueOf(battle.getDefenderDamage())));
-        defenderAcc.setImage(Character.getImageComponent(String.valueOf(battle.getDefenderAccuracy())));
-        defenderCrit.setImage(Character.getImageComponent(String.valueOf(battle.getDefenderCriticalChance())));
+            defenderDmg.setImage(Text.getImageComponent(String.valueOf(battle.getDefenderDamage())));
+            defenderAcc.setImage(Text.getImageComponent(String.valueOf(battle.getDefenderAccuracy())));
+            defenderCrit.setImage(Text.getImageComponent(String.valueOf(battle.getDefenderCriticalChance())));
         }
         else
         {
-        defenderDmg.setImage(Character.getImageComponent("-- "));
-        defenderAcc.setImage(Character.getImageComponent("-- "));
-        defenderCrit.setImage(Character.getImageComponent("-- "));
+            defenderDmg.setImage(Text.getImageComponent("-- "));
+            defenderAcc.setImage(Text.getImageComponent("-- "));
+            defenderCrit.setImage(Text.getImageComponent("-- "));
         }
         defenderDmg.setLocation(20 - defenderDmg.getWidth(), 38);
         defenderAcc.setLocation(20 - defenderAcc.getWidth(), 54);
         defenderCrit.setLocation(20 - defenderCrit.getWidth(), 70);
     }
-    
-    public void open(ArrayList<Unit> selectableUnits) {
-        super.open(selectableUnits);
-        this.cursor.getMapAnim().setAttack();
-    }
-    
+    @Override
     public void setTick(int tick) {
-        // number of attacks stuff goes here.
+        attackerWeaponTriangleIndicator.setTick(tick);
+        defenderWeaponTriangleIndicator.setTick(tick);
+        repaint();
     }
     
-    protected void performAction() {
+    @Override
+    public boolean isTargetable(Item item) {
+        if(item instanceof Weapon)
+            return true;
+        else
+            return false;
+    }
+    @Override
+    public boolean isUseable(Item item) {
+        return isTargetable(item)&&getActor().isUseable(item);
+    }
+    
+    @Override
+    void updateRanges(Item item) {
+        if(item instanceof Weapon)
+        {
+            level.getPanelEffectsTile().updateAttackablePoints(getActor().getPointsInRangeWith((Weapon)item));
+        }
+        else
+        {
+            level.getPanelEffectsTile().reset();
+        }
+    }
+    
+    @Override
+    protected void performAction(int index) {
         cursor.hideCursor();
-        level.initiateBattle(battle);
+//        level.initiateBattle(battle);
+        level.runBattle(battle);
+        cursor.endAction();
     }
 }

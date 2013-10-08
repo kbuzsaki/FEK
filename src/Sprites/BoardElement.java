@@ -9,28 +9,23 @@ import java.util.ArrayList;
         
 public abstract class BoardElement {
     
-    protected Animation mapAnim;
     protected Point position;
     protected ArrayList<Point> path;
     
-    public BoardElement(Animation mapAnim, int x, int y)
+    public BoardElement(int x, int y)
     {
-        this.mapAnim = mapAnim;
         position = new Point(x, y);
         path = new ArrayList();
-        synchMapAnim();
     }
     
-    public Animation getMapAnim() {
-        return mapAnim;
-    }
+    public abstract Animation getMapAnim();
     
     public final void synchMapAnim() {
-        mapAnim.setLocation(position.x * Map.tileS - getOffsetX(), 
+        getMapAnim().setLocation(position.x * Map.tileS - getOffsetX(), 
                             position.y * Map.tileS - getOffsetY());
     }
     public void setTick(int tick) {
-        mapAnim.setTick(tick);
+        getMapAnim().setTick(tick);
     }
     
     public ArrayList<Point> getPath() {
@@ -50,9 +45,12 @@ public abstract class BoardElement {
         return path.get(0).y*Map.tileS;
     }
     
+    public void setPosition(int x, int y) {
+        this.position = new Point(x, y);
+        synchMapAnim();
+    }
     public void setPosition(Point position) {
-        this.position = new Point(position);
-        //resetPosition(); // messes with animHandler
+        setPosition(position.x, position.y);
     }
     public Point getPosition() {
         return position;
@@ -78,17 +76,17 @@ public abstract class BoardElement {
         return new Point(getPixelX(), getPixelY());
     }
     public int getPixelX() {
-        return mapAnim.getX() + getOffsetX();
+        return getMapAnim().getX() + getOffsetX();
     }
     public int getPixelY() {
-        return mapAnim.getY() + getOffsetY();
+        return getMapAnim().getY() + getOffsetY();
     }
     
     private int getOffsetX() {
-        return mapAnim.getOffsetX();
+        return getMapAnim().getOffsetX();
     }
     private int getOffsetY() {
-        return mapAnim.getOffsetY();
+        return getMapAnim().getOffsetY();
     }
     
 }

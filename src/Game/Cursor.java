@@ -3,41 +3,58 @@
  */
 package Game;
 
-import Game.Menus.MenuSelectionStaff;
-import Game.Menus.MenuPanelAction;
-import Game.Menus.MenuSelectionAttack;
+import Game.Menus.CancelListener;
 import Game.Sound.SoundManager;
+import Maps.Map;
+import Sprites.Animation;
 import Sprites.AnimationMapCursor;
 import Sprites.BoardElement;
+import Sprites.Panels.PanelMenus;
 import Units.Unit;
 import java.awt.Point;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.logging.Logger;
+import javax.swing.event.EventListenerList;
 
 public class Cursor extends BoardElement{
-    private AnimationMapCursor mapAnim;
+    // REFACTOR: remove Cursor's reference to Level?
     private Level level;
+    private Map map;
     private SoundManager soundManager;
     
-    private MenuPanelAction actionMenu;
-    private MenuSelectionAttack attackMenu;
-    private MenuSelectionStaff staffMenu;
-
+    private PanelMenus menusPanel;
+    
+    private AnimationMapCursor mapAnim;
+    private EventListenerList listenerList;
     private boolean hasControl = true;
     private Unit focusUnit = null;
     private Unit selectedUnit = null;
 
-    public Cursor(Level level, SoundManager soundManager, int x, int y) {
-        super(new AnimationMapCursor("cursor"), x, y);
-        this.mapAnim = (AnimationMapCursor) super.mapAnim;
+    public Cursor(Level level, SoundManager soundManager, Map map, int x, int y) {
+        super(x, y);
         this.level = level;
         this.soundManager = soundManager;
+        this.map = map;
         
-        actionMenu = new MenuPanelAction(level.getMap().image.getSize(), this, soundManager);
-        attackMenu = new MenuSelectionAttack(level, level.getMap().image.getSize(), this);
-        staffMenu  = new MenuSelectionStaff(level, level.getMap().image.getSize(), this);
+        this.mapAnim = new AnimationMapCursor(Animation.getFilename("cursor"));
+        synchMapAnim();
+        listenerList = new EventListenerList();
     }
     
+    public void setMenusPanel(PanelMenus menusPanel) {
+        this.menusPanel = menusPanel;
+    }
+    
+    @Override
     public AnimationMapCursor getMapAnim() {
         return mapAnim;
+    }
+    public void addCursorMovementListener(CursorMovementListener listener) {
+        listenerList.add(CursorMovementListener.class, listener);
+    }
+    public void addSelectionListener(SelectionListener listener) {
+        listenerList.add(SelectionListener.class, listener);
     }
     
     /**
@@ -46,32 +63,7 @@ public class Cursor extends BoardElement{
      * @return true if the command was used
      */
     public boolean keyHandle(Command button) {
-        if (actionMenu.isOpen())
-        {
-            if (actionMenu.keyHandle(button)) // if the actionMenu is finished
-            {
-                return true;
-            }
-        }
-        else if (attackMenu.isOpen())
-        {
-            if (attackMenu.keyHandle(button)) //if the attackMenu is finished
-            {
-                return true;
-            }
-        }
-        else if (staffMenu.isOpen())
-        {
-            if (staffMenu.keyHandle(button)) // if the staffMenu is finished
-            {
-                return true;
-            }
-        }
-        else if (!hasControl)
-        {
-            return true;
-        }
-        else
+        if (hasControl)
         {
             switch(button)
             {
@@ -90,7 +82,18 @@ public class Cursor extends BoardElement{
                 case A:
                     if (hasSelectedUnit())
                     {
-                        moveUnit();
+                        if(isControllable(getSelectedUnit()))
+                        {
+                            hideCursor();
+                            level.moveUnit(selectedUnit);
+                            openActionMenu();
+                        }
+                        else
+                        {
+                            cancelSelection();
+                        }
+                        
+                        
                         return true;
                     }
                     else if (selectableUnitIsAt(position))
@@ -100,15 +103,17 @@ public class Cursor extends BoardElement{
                     }
                     break;
                 case B:
-                    cancel();
-                    return true;
-                case SELECT:
-                    try {
-                        selectedUnit.getStats().levelUp();
-                        level.getPanelInfoUnit().setUnit(selectedUnit);
-                    } catch (NullPointerException ex) {
-                        Game.log("No unit selected");
+                    if(hasSelectedUnit())
+                    {
+                        cancelSelection();
+                        return true;
                     }
+                    break;
+                case SELECT:
+                    if(hasSelectedUnit())
+                        selectedUnit.getStats().levelUp();
+                    else
+                        Game.logInfo("No unit selected");
                     break;
             }
         }
@@ -128,35 +133,28 @@ public class Cursor extends BoardElement{
         if (hasControl)
         {
             soundManager.playSoundEffect(SoundManager.cursorBlip);
-            if(moveTo(x, y))
-            {
-                if(hasSelectedUnit())
-                {
-                    incrementPath();
-                }
-                return true;
-            }
+            return moveTo(x, y);
         }
         return false;
     }
     public boolean moveTo(int x, int y) {
         if( (x >= 0)
-              &&(x <= level.getMap().width-1)
+              &&(x <= map.width-1)
               &&(y >= 0)
-              &&(y <= level.getMap().height-1))
+              &&(y <= map.height-1))
             {
-                position.setLocation(x, y);
-                synchMapAnim();
-                
+                setPosition(x, y);
                 updateFocus();
-                
-                if (actionMenu.isOpen())
+                if(hasSelectedUnit() && isControllable(getSelectedUnit()) && hasControl)
                 {
-                    actionMenu.updatePosition(x);
+                    selectedUnit.incrementPath(position);
                 }
-                if (attackMenu.isOpen())
+                
+                for(CursorMovementListener listener : 
+                    listenerList.getListeners(CursorMovementListener.class))
                 {
-                    attackMenu.updatePosition(x);
+                    listener.handleCursorMovement(new CursorMovementEvent(this, 
+                            map.getSquareAt(position)));
                 }
                 
                 return true;
@@ -179,15 +177,6 @@ public class Cursor extends BoardElement{
         move(position.x + 1, position.y);
     }
     
-    public MenuPanelAction getActionMenu() {
-        return actionMenu;
-    }
-    public MenuSelectionAttack getAttackMenu() {
-        return attackMenu;
-    }
-    public MenuSelectionStaff getStaffMenu() {
-        return staffMenu;
-    }
     public Unit getFocusUnit() {
         return focusUnit;
     }
@@ -196,15 +185,18 @@ public class Cursor extends BoardElement{
     }
 
     public boolean selectableUnitIsAt(Point position) {
-        if (level.getMap().getUnitAt(position) != null)
+        if (map.getUnitAt(position) != null)
         {
-            if ((!level.getMap().getUnitAt(position).isDepleted())
-              &&(level.getMap().getUnitAt(position).getFaction() == level.getCurrentTurnFaction()))
+            if ((!map.getUnitAt(position).isDepleted())
+              /*&&(map.getUnitAt(position).getFaction() == level.getCurrentPhaseFaction())*/)
             {
                 return true;
             }
         }
         return false;
+    }
+    public boolean isControllable(Unit unit) {
+        return (!unit.isDepleted() && unit.getFaction() == level.getCurrentPhaseFaction());
     }
     public boolean hasSelectedUnit() {
         if (selectedUnit != null) {
@@ -227,10 +219,11 @@ public class Cursor extends BoardElement{
     }
     public void showCursor(boolean hasControl) {
         showCursor();
-        setControl(true);
+        setControl(hasControl);
     }
     
     public void updateFocus() {
+        // If there's already a focus unit, defocus it
         if (focusUnit != null) {
             if (focusUnit != selectedUnit)
             {
@@ -240,20 +233,12 @@ public class Cursor extends BoardElement{
             mapAnim.setNormal();
         }
         
-        level.getPanelInfoTerrain().setValues(level.getMap().getTerrainAt(position), 
-                level.getMap().getTerrainIconAt(position));
-        if(!hasSelectedUnit() || (level.getMap().getUnitAt(position) != null))
+        // if there's a selectable unit at the current position and a unit isn't
+        // already selected, then set the unit at the current position to be animated
+        if ((selectableUnitIsAt(position)) && (!hasSelectedUnit()) 
+                && isControllable(map.getUnitAt(position))) 
         {
-            level.getPanelInfoUnit().setUnit(level.getMap().getUnitAt(position));
-        }
-        else
-        {
-            level.getPanelInfoUnit().setUnit(selectedUnit);
-        }
-        
-        if ((selectableUnitIsAt(position)) && (!hasSelectedUnit())) 
-        {
-            focusUnit = level.getMap().getUnitAt(position.x, position.y);
+            focusUnit = map.getUnitAt(position.x, position.y);
             focusUnit.getMapAnim().setFocus();
             mapAnim.setFocus();
         }
@@ -263,89 +248,59 @@ public class Cursor extends BoardElement{
         {
             deselectUnit();
         }
-        selectedUnit = level.getMap().getUnitAt(position.x, position.y);
-        selectedUnit.select();
+        selectedUnit = map.getUnitAt(position.x, position.y);
+        selectedUnit.select(isControllable(selectedUnit));
         
         soundManager.playSoundEffect(SoundManager.select);
-        level.getPanelEffectsTile().updateMoveGraphics(
-                selectedUnit.getPointsInRange(), 
-                selectedUnit.getAttackPointsInMoveRange(),
-                selectedUnit.getStaffPointsInMoveRange());
+        
+        for(SelectionListener listener : listenerList.getListeners(SelectionListener.class))
+        {
+            listener.handleSelection(new SelectionEvent(selectedUnit));
+        }
+        
     }
     public void deselectUnit() {
         selectedUnit.deselect();
         selectedUnit = null;
-        level.getPanelEffectsTile().reset();
-        level.getPanelEffectsArrow().reset();
+        for(SelectionListener listener : listenerList.getListeners(SelectionListener.class))
+        {
+            listener.handleDeselection(new DeselectionEvent(this));
+        }
     }
-    private void cancel() {
+    private void cancelSelection() {
         soundManager.playSoundEffect(SoundManager.cancel);
-        if (hasSelectedUnit()) 
+        if(isControllable(selectedUnit))
         {
-            selectedUnit.cancel();
-            setPosition(selectedUnit.getPosition());
-            deselectUnit();
+            moveTo(selectedUnit.getPosition());
         }
-        synchMapAnim();
-        updateFocus();
-        showCursor();
-        setControl(true);
+        deselectUnit();
+        showCursor(true);
     }
     
-    public void cancelActionMenu() {
-        // TODO: make this the proper cancel and play the right sound
-        cancel();
-    }
-    public void cancelTargetSelection() {
-        // TODO: play the right cancel sound here
-        hideCursor();
-        openActionMenu();
-    }
-    
-    private void incrementPath() {
-        selectedUnit.incrementPath(position);
-        level.getPanelEffectsArrow().updateArrowPath(selectedUnit.getPotentialPath());
-    }
-    private void moveUnit() {
-        if (level.moveUnit(selectedUnit)) // if the unit begins movement successfully
-        {
-            hideCursor(); // hide the cursor
-            level.getPanelEffectsArrow().reset(); // clear the effects
-            level.getPanelEffectsTile().reset();
-            
-            //level.overlapReset();
-            
-        }
-    }
     
     public void openActionMenu() {
-        actionMenu.open();
-        level.getPanelEffectsTile().updateInfluenceablePoints(
-                selectedUnit.getAttackPointsInRange(), 
-                selectedUnit.getStaffPointsInRange());
+        menusPanel.getActionMenu().open(new CancelListener() {
+            @Override
+            public void notifyCancel() {
+                cancelAction();
+            }
+        });
+        // TODO: action menu needs influenceable points
+//        level.getPanelEffectsTile().updateInfluenceablePoints(
+//                selectedUnit.getAttackPointsInRange(), 
+//                selectedUnit.getStaffPointsInRange());
+    }
+    private void cancelAction() {
+        soundManager.playSoundEffect(SoundManager.cancel);
+        moveTo(selectedUnit.getPotentialPath().get(selectedUnit.getPotentialPath().size() - 1));
+        selectedUnit.cancelMovement();
+        showCursor(true);
     }
     
-    public boolean actionAttack() {
-        Game.log(selectedUnit.getName() + " attacks!");
-        
-        level.getPanelEffectsTile().updateAttackablePoints(selectedUnit.getAttackablePoints());
-        attackMenu.open(level.getMap().getUnitsAt(selectedUnit.getAttackablePoints()));
-        return false;
-    }
-    public boolean actionStaff() {
-        Game.log(selectedUnit.getName() + " uses a staff!");
-        
-        level.getPanelEffectsTile().updateStaffPoints(selectedUnit.getStaffPoints());
-        staffMenu.open(level.getMap().getUnitsAt(selectedUnit.getStaffPoints()));
-        return false;
-    }
-    public boolean actionItem() {
-        Game.log(selectedUnit.getName() + " uses an item!");
-        return true;
-    }
     public void actionWait() {
-        Game.log(selectedUnit.getName() + " waits!");
-        selectedUnit.setDepleted(true);
+        // TODO: analagous method in unit "unit.wait" unit.endTurn send completionevent?
+        moveTo(selectedUnit.getPosition());
+        selectedUnit.endTurn();
         deselectUnit();
         showCursor(true);
     }
@@ -354,4 +309,5 @@ public class Cursor extends BoardElement{
         actionWait();
         updateFocus();
     }
+
 }

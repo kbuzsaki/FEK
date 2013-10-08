@@ -14,7 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 
-public class Animation extends Component{
+public class Animation extends Component implements Animateable {
     
     /**
      * The desired sequence for frames to be played in. 
@@ -22,8 +22,8 @@ public class Animation extends Component{
      */
     private final int sequence[][]; 
     
-    private String filepath;
-    private BufferedImage wholeImage;
+    protected String filepath;
+    private BufferedImage wholeSpriteSheet;
     private int height; // The height of an individual frame
     private int width; // The width of an individual frame
     private int numberAnimations;
@@ -32,7 +32,7 @@ public class Animation extends Component{
      * A two-dimensional array of frames for each animation 
      */
     private BufferedImage[][] animation;
-    private int animNum; // which animation is shown, assigned from final ints
+    protected int animNum; // which animation is shown, assigned from final ints
     private int tick; // which frame of which animation is shown
     private boolean isPlaying = true;
     
@@ -41,47 +41,48 @@ public class Animation extends Component{
     private RescaleOp effects = new RescaleOp(scales, offsets, null);
     private int opacityTick = 3;
     
-    public Animation(String filepath, int numberAnimations, int maxNumberFrames, int[][] sequence) {
+    public Animation(BufferedImage spriteSheet, int numberAnimations, int maxNumberFrames, int[][] sequence) {
         animNum = 0;
         tick = 0;
-        this.sequence = sequence;
+        this.sequence = sequence.clone();
         
-        loadAnimation(filepath, numberAnimations, maxNumberFrames);
+        loadAnimation(spriteSheet, numberAnimations, maxNumberFrames);
+    }
+    public Animation(String filepath, int[] colorTemplate, int numberAnimations, int maxNumberFrames, int[][] sequence) {
+        this(SpriteUtil.loadDesaturatedImage(filepath, colorTemplate), numberAnimations, maxNumberFrames, sequence);
+        this.filepath = filepath;
+    }
+    public Animation(String filepath, int numberAnimations, int maxNumberFrames, int[][] sequence) {
+        this(filepath, null, numberAnimations, maxNumberFrames, sequence);
     }
     
-    protected void loadAnimation(String filepath, int numberAnimations, int maxNumberFrames) {
+    protected void loadAnimation(BufferedImage spriteSheet, int numberAnimations, int maxNumberFrames) {
         this.numberAnimations = numberAnimations;
         this.maxNumberFrames = maxNumberFrames;
+        this.animation = new BufferedImage[numberAnimations][maxNumberFrames];
         
-        this.filepath = "resources/animations/" + filepath + ".png";
-        animation = new BufferedImage[numberAnimations][maxNumberFrames];
-        try {
-            wholeImage = ImageIO.read(new File(this.filepath));
-        } catch (IOException ex) {}
+        wholeSpriteSheet = spriteSheet;
         
-        height = wholeImage.getHeight()/numberAnimations;
-        width = wholeImage.getWidth()/maxNumberFrames;
+        height = wholeSpriteSheet.getHeight()/numberAnimations;
+        width = wholeSpriteSheet.getWidth()/maxNumberFrames;
         for (int row = 0; row < numberAnimations; row++)
         {
             for (int column = 0; column < maxNumberFrames; column++)
             {
-                animation[row][column] = wholeImage.getSubimage(
+                animation[row][column] = wholeSpriteSheet.getSubimage(
                        column*width, row*height, width, height);
             }
         }
         setSize(width,height);
         setPreferredSize(getSize());
     }
-    protected void loadAnimation(Animation anim) {
-        loadAnimation(anim.filepath, anim.numberAnimations, anim.maxNumberFrames);
+    public void loadAnimation(Animation anim) {
+        loadAnimation(anim.wholeSpriteSheet, anim.numberAnimations, anim.maxNumberFrames);
         animation = anim.animation.clone();
     }
     
     public void setCenteredOn(Rectangle rectangle) {
-        int offsetX = (getWidth() - rectangle.width)/2;
-        int offsetY = (getHeight() - rectangle.height)/2;
-        setLocation(rectangle.x - offsetX,
-                    rectangle.y - offsetY);
+        SpriteUtil.centerIn(this, rectangle);
     }
     public void setLocationCentered(int x, int y) {
         setLocation(x - getOffsetX(),
@@ -103,6 +104,7 @@ public class Animation extends Component{
     
     public void setIsPlaying(boolean isPlaying) {
         this.isPlaying = isPlaying;
+        forceTick(0);
     }
     public boolean isPlaying() {
         return isPlaying;
@@ -112,11 +114,15 @@ public class Animation extends Component{
      * Sets the general tick for the animation.
      * @param tick general tick, can be any integer
      */
+    @Override
     public void setTick(int tick) {
         if (isPlaying) 
         {
             this.tick = tick;
         }
+    }
+    protected void forceTick(int tick) {
+        this.tick = tick;
         repaint();
     }
     /**
@@ -125,6 +131,12 @@ public class Animation extends Component{
      */
     protected void setAnimation(int animNum) {
         this.animNum = animNum;
+    }
+    protected int getFrame() {
+        return findFrame();
+    }
+    protected int getTick() {
+        return tick;
     }
     /**
      * Takes a general tick and returns the corresponding frame of the current animation.
@@ -151,9 +163,16 @@ public class Animation extends Component{
         effects = new RescaleOp(scales, offsets, null);
     }
     
+    @Override
     public void paint(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
-        g2d.drawImage(animation[animNum][sequence[animNum][findFrame()]], effects, 0, 0);
+//        g2d.scale(2,2);
+        g2d.drawImage(animation[animNum][sequence[animNum][getFrame()]], effects, 0, 0);
+    }
+    
+    private static final String animationDirectory = "resources/animations/";
+    public static String getFilename(String filename) {
+        return animationDirectory + filename + ".png";
     }
     
 }

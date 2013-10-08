@@ -3,21 +3,27 @@
  */
 package Units;
 
-import Game.Sound.PlayerThread;
+import Game.Game;
 import Game.Sound.SoundManager;
+import Game.Sound.Stoppable;
 import Maps.Map;
 import Sprites.AnimationMapUnit;
 import Sprites.BoardElement;
 import Units.Effects.Effect;
 import Units.Items.Equipment;
 import Units.Items.Item;
+import Units.Items.ItemFilter;
 import Units.Items.Staff;
+import Units.Items.UseableItem;
 import Units.Items.Weapon;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class Unit extends BoardElement{
+/**
+ * 
+ */
+public class Unit extends BoardElement implements ItemFilter {
     private Map map;
     
     private boolean isDepleted;
@@ -29,6 +35,8 @@ public class Unit extends BoardElement{
     private Stats stats;
     private Inventory inventory;
     
+    private boolean hasTraded;
+    
     private Point startPosition;
     private ArrayList<Point> potentialPath;
     
@@ -36,17 +44,18 @@ public class Unit extends BoardElement{
     private ArrayList<Point> pointsInRange; // The list of points that the unit can potentially reach
     private ArrayList<Point> attackPointsInMoveRange; // The list of points that the unit can potentially attack
     private ArrayList<Point> staffPointsInMoveRange; // The list of points that the unit can potentially use a staff on
-    private ArrayList<Point> attackPointsInRange;
-    private ArrayList<Point> staffPointsInRange;
+    private ArrayList<Point> attackPointsInRange; // The list of points that the unit can attack from its position
+    private ArrayList<Point> staffPointsInRange; // The list of points that the unit can use a staff on frm its position
     
     private SoundManager soundManager;
-    private PlayerThread moveSound;
+    private Stoppable moveSound;
     
     public Unit(SoundManager soundManager, Map map, int x, int y, Faction faction, 
             UnitClass unitClass, int level, Inventory inventory)
     {
-        super(new AnimationMapUnit(unitClass.spriteFileName), x, y);
-        mapAnim = (AnimationMapUnit) super.mapAnim;
+        super(x, y);
+        mapAnim = new AnimationMapUnit(unitClass.spriteFileName, faction.colorTemplate);
+        synchMapAnim();
         
         this.soundManager = soundManager;
         this.map = map;
@@ -56,6 +65,8 @@ public class Unit extends BoardElement{
         moveType = unitClass.moveT;
         stats = new Stats(unitClass, level);
         path = new ArrayList();
+        potentialPath = new ArrayList<>();
+        potentialPath.add(position);
         
         this.inventory = inventory;
         inventory.setOwner(this);
@@ -65,181 +76,243 @@ public class Unit extends BoardElement{
         this(soundManager, map, x, y, faction, unitClass, 1, new Inventory());
     }
     
-    public void setDepleted(boolean isDepleted) {
-        this.isDepleted = isDepleted;
-        
-        if (this.isDepleted)
-        {
-            mapAnim.setDepleted();
-        }
-        else 
-        {
-            mapAnim.setStand();
-        }
-    }
-    public boolean isDepleted() {
-        return isDepleted;
-    }
-    public boolean isDead() {
-        if(stats.getHP().get() > 0)
-        {
-            return false;
-        }
-        return true;
-    }
-    
+    // "Base" stat getters
     public String getName() {
         return name;
     }
+    @Override
     public AnimationMapUnit getMapAnim() {
             return mapAnim;
     }
     public Faction getFaction() {
         return faction;
     }
-    
     public Stats getStats() {
         return stats;
     }
-    public int getMov() {
-        return stats.getMOV().get();
+    public Inventory getInventory() {
+        return inventory;
+    }
+    public Item[] getItems() {
+        return inventory.getItems();
+    }
+    public int getHP() {
+        return stats.getHP().get();
+    }
+    public int getStrength() {
+        return stats.getStr().get();
+    }
+    public int getSkill() {
+        return stats.getSkl().get();
+    }
+    public int getSpeed() {
+        return stats.getSpd().get();
+    }
+    public int getLuck() {
+        return stats.getLck().get();
+    }
+    public int getDefense() {
+        return stats.getDef().get();
+    }
+    public int getResistance() {
+        return stats.getRes().get();
+    }
+    public int getConstitution() {
+        return stats.getCon().get();
+    }
+    public int getAid() {
+        return stats.getCon().get() - 1;
+    }
+    public int getMovePoints() {
+        return stats.getMov().get();
     }
     
+    // state-based getters
     public Equipment getEquiped() {
         return inventory.getEquiped();
+    }
+    public boolean hasEquiped() {
+        return inventory.hasEquiped();
     }
     public Weapon getEquipedWeapon() {
         return inventory.getEquipedWeapon();
     }
+    public boolean hasEquipedWeapon() {
+        return inventory.hasEquipedWeapon();
+    }
     public Staff getEquipedStaff() {
         return inventory.getEquipedStaff();
     }
-    
-    public Item[] getItems() {
-        return inventory.getItems();
+    public boolean hasEquipedStaff() {
+        return inventory.hasEquipedStaff();
     }
     
-    public void clearEffect(Effect effect) {
-        
-    }
-    
-    /**
-     * Alters the effective or current health of the unit.
-     * futureHealth is found using: <code>futureHealth = currentHealth + dHealth</code>
-     * Damage should be negative.
-     * Healing should be positive.
-     * @param dHealth the change in health
-     */
-    protected void alterHealth(int dHealth) {
-        int futureHealth = getHealth() + dHealth;
-        
-        if(futureHealth <= 0)
-        {
-            stats.getHP().set(0);
-        }
-        else if(futureHealth >= stats.getHP().getValue())
-        {
-            stats.getHP().set(stats.getHP().getValue());
-        }
-        else
-        {
-            stats.getHP().set(futureHealth);
-        }
-    }
-    public void damage(int damage) {
-        alterHealth(damage*-1);
-    }
-    public void heal(int healing) {
-        alterHealth(healing);
-    }
-    
-    
-    public int getHealth() {
-        return stats.getHP().get();
-    }
-    public int getDamage(Unit enemyUnit) {
+    // battle stat getters
+    protected int getDamage(Weapon weapon, Unit enemyUnit) {
         int damage = 0;
         
-        if(getEquiped() instanceof Weapon)
+        // weapon's natural might
+        damage += weapon.getMight();
+
+        // unit's own strength
+        if(getEquipedWeapon().isMagic(enemyUnit))
+            damage += getStrength(); // get mag goes here
+        else
+            damage += getStrength();
+        
+        if (enemyUnit != null)
         {
-            Weapon weapon = (Weapon) getEquiped();
-            damage += weapon.getMight(enemyUnit);
-            
-            if(weapon.isMagic(enemyUnit))
-            {
-//                damage += stats.getMAG().get();
-            }
-            else
-            {
-                damage += stats.getSTR().get();
-            }
+            // weapon triangle changes 
+            if(getEquipedWeapon().hasWeaponTriangleAdvantage(enemyUnit))
+                damage += getEquipedWeapon().getWeaponTriangleDeltaMight();
+            else if(getEquipedWeapon().hasWeaponTriangleDisadvantage(enemyUnit))
+                damage -= getEquipedWeapon().getWeaponTriangleDeltaMight();
         }
         
         return damage;
     }
-    public int getReduction(Unit enemyUnit) {
+    public final int getDamage(Weapon weapon) {
+        return getDamage(weapon, null);
+    }
+    public final int getDamage(Unit enemyUnit) {
+        return getDamage(getEquipedWeapon(), enemyUnit);
+    }
+    
+    protected int getReduction(Weapon weapon, Unit enemyUnit) {
         int reduction = 0;
-        if(enemyUnit.getEquipedWeapon().isMagic(enemyUnit))
+        if(enemyUnit != null)
         {
-            reduction += getStats().getRES().get();
-            reduction += map.getTerrainAt(position).resistanceBonus;
-        }
-        else
-        {
-            reduction += getStats().getDEF().get();
-            reduction += map.getTerrainAt(position).defenseBonus;
+            if(enemyUnit.getEquipedWeapon().isMagic(this))
+            {
+                reduction += getResistance();
+                reduction += map.getTerrainAt(position).resistanceBonus;
+            }
+            else
+            {
+                reduction += getDefense();
+                reduction += map.getTerrainAt(position).defenseBonus;
+            }
         }
         return reduction;
     }
-    public int getHit(Unit enemyUnit) {
+    public final int getReduction(Weapon weapon) {
+        return getReduction(weapon, null);
+    }
+    public final int getReduction(Unit enemyUnit) {
+        return getReduction(getEquipedWeapon(), enemyUnit);
+    }
+    
+    protected int getHit(Weapon weapon, Unit enemyUnit) {
         // (Skill x 2) + (Luck / 2) + Support bonus + Weapon triangle bonus + S Rank bonus + Tactician bonus
-        int hit = getEquipedWeapon().getHit(enemyUnit);
-        hit += stats.getSKL().get()*2;
-        hit += stats.getLCK().get()/2;
-//        if(stats.hasSRank(getEquipedWeapon().getType()))
-//        {
+        int hit = weapon.getHit();
+        hit += getSkill()*2;
+        hit += getLuck()/2;
+        
+//        if(stats.hasSRank(getEquipedWeapon()))
 //            hit += 5;
-//        }
-//        if(getEquipedWeapon().hasAdvantageOver(enemyUnit.getEquipedWeapon()))
-//        {
-//            hit += 5;
-//        }
+        
+        if(enemyUnit != null)
+        {
+            if(getEquipedWeapon().hasWeaponTriangleAdvantage(enemyUnit))
+                hit += getEquipedWeapon().getWeaponTriangleDeltaHit();
+            else if(getEquipedWeapon().hasWeaponTriangleDisadvantage(enemyUnit))
+                hit -= getEquipedWeapon().getWeaponTriangleDeltaHit();
+        }
+        
         return hit;
     }
-    public int getAvoid(Unit enemyUnit) {
+    public final int getHit(Weapon weapon) {
+        return getHit(weapon, null);
+    }
+    public final int getHit(Unit enemyUnit) {
+        return getHit(getEquipedWeapon(), enemyUnit);
+    }
+    
+    protected int getAvoid(Weapon weapon, Unit enemyUnit) {
 //        (Attack Speed x 2) + Luck + Support bonus + Terrain bonus + Tactician bonus
         int avoid = 0;
-        avoid += getAttackSpeed(enemyUnit)*2;
-        avoid += stats.getLCK().get();
+        avoid += getAttackSpeed(weapon, enemyUnit)*2;
+        avoid += getLuck();
         avoid += map.getTerrainAt(position).avoidBonus;
         return avoid;
     }
-    public int getCriticalChance(Unit enemyUnit) {
+    public final int getAvoid(Weapon weapon) {
+        return getAvoid(weapon, null);
+    }
+    public final int getAvoid(Unit enemyUnit) {
+        return getAvoid(getEquipedWeapon(), enemyUnit);
+    }
+    
+    protected int getCriticalChance(Weapon weapon, Unit enemyUnit) {
 //        Weapon Critical + (Skill / 2) + Support bonus + Critical bonus + S Rank bonus
-        int crit = getEquipedWeapon().getCrit(enemyUnit);
-        crit += stats.getSKL().get()/2;
+        int crit = weapon.getCrit();
+        crit += getSkill()/2;
         return crit;
     }
-    public int getCriticalAvoid(Unit enemyUnit) {
+    public final int getCriticalChance(Weapon weapon) {
+        return getCriticalChance(weapon, null);
+    }
+    public final int getCriticalChance(Unit enemyUnit) {
+        return getCriticalChance(getEquipedWeapon(), enemyUnit);
+    }
+    
+    protected int getCriticalAvoid(Weapon weapon, Unit enemyUnit) {
 //        Luck + Support bonus + Tactician bonus
         int criticalAvoid = 0;
-        criticalAvoid += stats.getLCK().get();
+        criticalAvoid += getLuck();
         return criticalAvoid;
     }
-    public int getAttackSpeed(Unit enemyUnit) {
+    public final int getCriticalAvoid(Weapon weapon) {
+        return getCriticalAvoid(weapon, null);
+    }
+    public final int getCriticalAvoid(Unit enemyUnit) {
+        return getCriticalAvoid(getEquipedWeapon(), enemyUnit);
+    }
+    
+    protected int getAttackSpeed(Weapon weapon, Unit enemyUnit) {
 //        Speed - (Weapon Weight - Constitution, take as 0 if negative)
-        int attackSpeed = stats.getSPD().get();
-        if(getEquipedWeapon().getWeight(enemyUnit) > stats.getCON().get())
+        int attackSpeed = getSpeed();
+        if(weapon != null)
         {
-            attackSpeed -= (getEquipedWeapon().getWeight(enemyUnit) - stats.getCON().get());
+            if(weapon.getWeight() > getConstitution())
+            {
+                attackSpeed -= (weapon.getWeight() - getConstitution());
+            }
         }
         return attackSpeed;
     }
-    public int getNumberAttacks(Unit enemyUnit) {
-        int numberAttacks = 1;
-        return numberAttacks;
+    public final int getAttackSpeed(Weapon weapon) {
+        return getAttackSpeed(weapon, null);
+    }
+    public final int getAttackSpeed(Unit enemyUnit) {
+        return getAttackSpeed(getEquipedWeapon(), enemyUnit);
     }
     
+    protected int getNumberAttacks(Weapon weapon, Unit enemyUnit) {
+        int numberAttacks = 1;
+        if(enemyUnit != null)
+        {
+            if(getAttackSpeed(weapon, enemyUnit) - enemyUnit.getAttackSpeed(this) >= 4)
+            {
+                numberAttacks *= 2;
+            }
+        }
+        return numberAttacks;
+    }
+    public final int getNumberAttacks(Weapon weapon) {
+        return getNumberAttacks(weapon, null);
+    }
+    public final int getNumberAttacks(Unit enemyUnit) {
+        return getNumberAttacks(getEquipedWeapon(), enemyUnit);
+    }
+    
+    // boolean state queries
+    public boolean isDepleted() {
+        return isDepleted;
+    }
+    public boolean isDead() {
+        return getHP() <= 0;
+    }
     public boolean canEquip(Equipment equip) {
         if(equip.isEquipableBy(this))
             return true;
@@ -257,22 +330,8 @@ public class Unit extends BoardElement{
             return false;
         }
         
-        return true;
-    }
-    public boolean canStaff(Unit unit) {
-        // If the unit does not exist
-        if (unit == null)
-        {
-            return false;
-        }
-        // If the unit is an enemy (need to change this to can the staff act on it)
-        if (!faction.isFriendlyTowards(unit.getFaction()))
-        {
-            return false;
-        }
-        
-        // If the targetted unit is this unit
-        if(unit == this)
+        // If this unit does not have a weapon
+        if (!hasEquipedWeapon())
         {
             return false;
         }
@@ -301,32 +360,95 @@ public class Unit extends BoardElement{
         
         return true;
     }
+    public boolean canStaff(Unit unit) {
+        // If the unit does not exist
+        if (unit == null)
+        {
+            return false;
+        }
+        
+        if (!hasEquipedStaff())
+        {
+            return false;
+        }
+        // If the unit is an enemy (need to change this to can the staff act on it)
+        if (!getEquipedStaff().canTarget(unit))
+        {
+            return false;
+        }
+        
+        // If the targetted unit is this unit
+        if(unit == this)
+        {
+            return false;
+        }
+        
+        return true;
+    }
+    public boolean canTradeWith(Unit unit) {
+        if(unit == null)
+            return false;
+        
+        if(!faction.isFriendlyTowards(unit.getFaction()))
+            return false;
+        
+        if(unit.getInventory().isEmpty() && getInventory().isEmpty())
+            return false;
+        
+        if(hasTraded)
+            return false;
+        
+        return true;
+    }
     public boolean canItem() {
-        return false;
+        return true;
+    }
+    public boolean canUse(UseableItem item) {
+        return item.canBeUsed();
+    }
+    public boolean canCancel() {
+        return !hasTraded;
     }
     
-    public void select() {
-        // Note that they must be called in this order-- points in range uses pathlist, attackpointlist uses pointsinrange
-        pathList = calculatePathList();
-        pointsInRange = calculatePointsInRange();
-        attackPointsInMoveRange = calculateAttackPointsInMoveRange();
-        staffPointsInMoveRange = calculateStaffPointsInMoveRange();
+    @Override
+    public boolean isTargetable(Item item) {
+        return true;
+    }
+    @Override
+    public boolean isUseable(Item item) {
+        if(item instanceof Equipment)
+            return ((Equipment)item).isEquipableBy(this);
+        return true;
+    }
+    
+    // actions
+    public void select(boolean isControllable) {
+        recalculateRanges();
         
         startPosition = position;
-        potentialPath = new ArrayList();
+        potentialPath = new ArrayList<>();
         potentialPath.add(position);
         
-        mapAnim.setMoveSouth();
+        if(isControllable)
+            mapAnim.setMoveSouth();
     }
     public void deselect() {
         setDepleted(isDepleted);
         synchMapAnim();
     }
-    public void cancel() {
-        map.moveUnit(position, startPosition);
-        setPosition(startPosition);
-        deselect();
+    public void endTurn() {
+        Game.logInfo(getName() + " waits!");
+        setDepleted(true);
     }
+    public void refresh() {
+        potentialPath = new ArrayList<>();
+        potentialPath.add(position);
+        setDepleted(false);
+        
+        stats.resetStats();
+        hasTraded = false;
+    }
+    
     public void incrementPath(Point position) {
         if (potentialPath.contains(position)) 
         {
@@ -335,43 +457,122 @@ public class Unit extends BoardElement{
                 potentialPath.remove(potentialPath.size() - 1);
             }
         }
-        else if ((getMov() >= pathMoveCost(potentialPath) + pointMoveCost(position)) // if you can move there with your current path
+        else if ((getMovePoints() >= pathMoveCost(potentialPath) + pointMoveCost(position)) // if you can move there with your current path
               &&(potentialPath.get(potentialPath.size() - 1).distance(position) == 1)) // and if the point is adjacent to the end of your path
         {
             potentialPath.add(new Point(position));
         }
-        else 
-        {
-        if (contains(position, pathList))
+        // if pathList is null, then it wasn't properly initialized elswhere
+        // this is likely because an illegal add attempt was made. Will throw exception
+        else if ((pathList != null) && contains(position, pathList))
         {
             potentialPath = pathTo(position);
-        }}
-    }
-    public boolean moveUnit() {
-        if (map.moveUnit(position, potentialPath.get(potentialPath.size() - 1)))
-        {
-            setPosition(potentialPath.get(potentialPath.size() - 1));
-            setPath(potentialPath);
-            moveSound = soundManager.playSoundEffect(SoundManager.moveFly, true);
-            return true;
         }
-        return false;
+        else
+        {
+            String errorMessage = "Could not add point: " + position;
+            if(pathList == null)
+            {
+                errorMessage += " (pathList is null, likely not initialized correctly)";
+            }
+            boolean isAdjacentToPath = false;
+            for(Point pathPoint : potentialPath)
+            {
+                // if is adjacent
+                if(pathPoint.distance(position) == 1)
+                {
+                    isAdjacentToPath = true;
+                    break;
+                }
+            }
+            if(isAdjacentToPath)
+            {
+                errorMessage += " (point is not adjacent to path)";
+            }
+            throw new IllegalArgumentException(errorMessage);
+        }
+    }
+    public void moveUnit() {
+        map.moveUnit(position, potentialPath.get(potentialPath.size() - 1));
+        setPath((ArrayList<Point>) potentialPath.clone());
+        moveSound = soundManager.playSoundEffect(SoundManager.moveFoot, true);
+    }
+    public void cancelMovement() {
+        if(canCancel())
+        {
+            // TODO: cancel movement fails when start is the same as end
+            map.moveUnit(position, startPosition);
+            setPosition(startPosition);
+        }
+        else
+        {
+            endTurn();
+        }
     }
     /** 
-     * Performs unit specific cleanup after moving
+     * Performs unit specific cleanup after moving.
      * Stops the move sound.
      * Updates the attackPointsInRange (specific to the point the unit is on)
      * Updates the staffPointsInRange  (specific to the point the unit is on)
      */
     public void endMovement() {
-        moveSound.stopPlaying();
+        setPosition(potentialPath.get(potentialPath.size() - 1));
+        moveSound.stop();
         attackPointsInRange = calculateAttackPointsInRange();
         staffPointsInRange = calculateStaffPointsInRange();
-//        soundManager.playSoundEffect(SoundManager.confirm);
+    }
+    
+    /**
+     * Alters the effective or current health of the unit.
+     * futureHealth is found using: <code>futureHealth = currentHealth + dHealth</code>
+     * Damage should be negative.
+     * Healing should be positive.
+     * @param dHealth the change in health
+     */
+    protected void alterHealth(int dHealth) {
+        int futureHealth = getHP() + dHealth;
+        
+        if(futureHealth <= 0)
+        {
+            stats.getHP().set(0);
+        }
+        else if(futureHealth >= stats.getHP().getValT())
+        {
+            stats.getHP().set(stats.getHP().getValT());
+        }
+        else
+        {
+            stats.getHP().set(futureHealth);
+        }
+    }
+    public void damage(int damage) {
+        alterHealth(damage*-1);
+    }
+    public void heal(int healing) {
+        alterHealth(healing);
+    }
+    
+    public void setDepleted(boolean isDepleted) {
+        this.isDepleted = isDepleted;
+        mapAnim.setDepleted(isDepleted);
+        mapAnim.setStand();
+    }
+    public void setHasTraded(boolean hasTraded) {
+        this.hasTraded = true;
+    }
+    public void clearEffect(Effect effect) {
+        
     }
     
     // Movement and range related calculations.
     // Abandon all hope, ye who enter here.
+    private void recalculateRanges() {
+        // Note that they must be called in this order-- points in range uses pathlist, attackpointlist uses pointsinrange
+        pathList = calculatePathList();
+        pointsInRange = calculatePointsInRange();
+        attackPointsInMoveRange = calculateAttackPointsInMoveRange();
+        staffPointsInMoveRange = calculateStaffPointsInMoveRange();
+    }
     /**
      * Gets the current potential path for the unit. 
      * The potential path is the path that the unit is considering taking
@@ -438,6 +639,30 @@ public class Unit extends BoardElement{
         
         return staffPoints;
     }
+    public ArrayList<Point> getTradePoints() {
+        ArrayList<Point> tradeablePoints = new ArrayList();
+        
+        for (Point adjacentPoint : getAdjacentPoints())
+            if(canTradeWith(map.getUnitAt(adjacentPoint))) // unit is at
+                tradeablePoints.add(adjacentPoint);
+        
+//        System.out.println(tradeablePoints.size() + " trade points");
+        return tradeablePoints;
+    }
+    public ArrayList<Point> getAdjacentPoints() {
+        ArrayList<Point> adjacentPoints = new ArrayList();
+        
+        for(int dx = -1; dx <= 1; dx++)
+            for(int dy = -1; dy <= 1; dy++)
+                if(Math.abs(dx) + Math.abs(dy) == 1)
+                    adjacentPoints.add(new Point(position.x + dx, position.y + dy));
+        
+        return adjacentPoints;
+    }
+    
+    public ArrayList<Point> getPointsInRangeWith(Equipment equipment) {
+        return calculatePointsInRange(position, equipment.getRangeMin(), equipment.getRangeMax());
+    }
     
     public ArrayList<Point> pathTo(Point position) {
         for (ArrayList<Point> path : pathList)
@@ -470,7 +695,7 @@ public class Unit extends BoardElement{
         ArrayList<ArrayList<Point>> pathList = new ArrayList(
                 Arrays.asList(new ArrayList(Arrays.asList(position))));
         
-        for (int movePoints = 0; movePoints <= getMov(); movePoints++)
+        for (int movePoints = 0; movePoints <= getMovePoints(); movePoints++)
         {
             ArrayList<ArrayList<Point>> tempPathList = new ArrayList(pathList);
             for (int j = 0; j < tempPathList.size(); j++)
@@ -553,8 +778,9 @@ public class Unit extends BoardElement{
     private int pathMoveCost(ArrayList<Point> path) {
         int cost = 0;
         
-        for (Point point : path)
-            cost += pointMoveCost(point);
+        // path contains start position, which does not count in path cost
+        for(int i = 1; i < path.size(); i++)
+            cost += pointMoveCost(path.get(i));
         
         return cost;
     }

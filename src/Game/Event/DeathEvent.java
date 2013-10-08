@@ -12,7 +12,7 @@ public class DeathEvent extends EventObject {
         super(deadUnit);
     }
 
-    public Unit getSource() {
-        return (Unit) super.getSource();
+    public Unit getDeadUnit() {
+        return (Unit) source;
     }
 }

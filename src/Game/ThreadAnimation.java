@@ -3,15 +3,14 @@
  */
 package Game;
 
-import Sprites.AnimationEffect;
 import Units.Unit;
 import java.util.Collection;
 
 public class ThreadAnimation extends Thread{
-    private static int animationTickDelay = 90;
+    public static final int animationTickDelay = 90;
     
     private Level level;
-    private int animationTick;
+    private int animationTick = 0;
     
     public ThreadAnimation(Level level) {
         this.level = level;
@@ -19,6 +18,7 @@ public class ThreadAnimation extends Thread{
         setName("AnimationThread");
     }
     
+    @Override
     public void run() {
         runAnimationLoop();
     }
@@ -27,7 +27,8 @@ public class ThreadAnimation extends Thread{
         while(true)
         {
             updateAnimations();
-            
+            // repaint the screen to show the new animated state
+            level.getMapScreen().repaint();
             try {
                 sleep(animationTickDelay);
             } catch ( InterruptedException ex) {
@@ -43,19 +44,12 @@ public class ThreadAnimation extends Thread{
 
         // set the tick for the unit animations
         for(Unit unit : level.getUnitList())
-            if (unit.getMapAnim().isPlaying())
-                unit.getMapAnim().setTick(animationTick);
+            unit.getMapAnim().setTick(animationTick);
 
         // ticks the dead unit animation opacities
         Collection<Unit> deadUnitList = (Collection<Unit>) level.getDeadUnits().clone();
         for (Unit deadUnit : deadUnitList)
             if(deadUnit.getMapAnim().tickOpacity())
                 level.removeUnit(deadUnit);
-
-        // ticks the temporary animations
-        Collection<AnimationEffect> effectsList = (Collection<AnimationEffect>) level.getAnimationEffects().clone();
-        for (AnimationEffect animationEffect : effectsList)
-            if(animationEffect.tick())
-                level.removeAnimationEffect(animationEffect);
     }
 }

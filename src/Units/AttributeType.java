@@ -13,9 +13,8 @@ public enum AttributeType {
     DEF("Def", null),
     RES("Res", null),
     CON("Con", null),
-    AID("Aid", null),
-    MOV("Mov", null);
-    
+    MOV("Move", null);
+     
     public final String name;
     public final String description;
     

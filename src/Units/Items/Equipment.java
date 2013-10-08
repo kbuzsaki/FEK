@@ -11,6 +11,7 @@ public abstract class Equipment extends Item {
     protected final int rangeMin;
     protected final int rangeMax;
     
+    public static final int WEAPON_LEVEL_NONE = 0;
     public static final int WEAPON_LEVEL_E = 1;
     public static final int WEAPON_LEVEL_D = 31;
     public static final int WEAPON_LEVEL_C = 71;
@@ -46,11 +47,11 @@ public abstract class Equipment extends Item {
         return weaponXP;
     }
     
-    public boolean isEquipableBy() {
+    public boolean isEquipable() {
         return isEquipableBy(owner);
     }
     public boolean isEquipableBy(Unit equiper) {
-        if(equiper.getStats().getWeaponXP(this) > weaponLevel)
+        if(equiper.getStats().getWeaponXP(WeaponType.getTypeOf(this)) >= weaponLevel)
         {
             return true;
         }

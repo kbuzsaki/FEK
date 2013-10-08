@@ -12,6 +12,7 @@ public class ThreadDelayedClose extends Thread{
     
     public ThreadDelayedClose(Closeable closeable, int delay) {
         this.closeable = closeable;
+        this.delay = delay;
         
         setName("ThreadDelayedClose: " + closeable.getClass().getName());
     }

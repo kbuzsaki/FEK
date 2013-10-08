@@ -13,6 +13,9 @@ public class AnimationEffect extends Animation implements Tickable{
     private SoundManager soundManager;
     private String soundEffectFilename;
     
+    private CompletionListener listener;
+    private int delay = 0;
+    
     public AnimationEffect(String filepath, int numberFrames, int[][] sequence) {
         super(filepath, 1, numberFrames, sequence);
         this.maxFrames = numberFrames;
@@ -26,10 +29,20 @@ public class AnimationEffect extends Animation implements Tickable{
         shouldPlaySoundEffect = true;
     }
     
+    public void setCompletionListener(CompletionListener listener) {
+        this.listener = listener;
+    }
     public void setSoundManager(SoundManager soundManager) {
         this.soundManager = soundManager;
     }
+    public void setDelay(int delay) {
+        this.delay = delay;
+    }
+    public int getDelay() {
+        return delay;
+    }
     
+    @Override
     public boolean tick() {
         if(shouldPlaySoundEffect)
         {
@@ -37,6 +50,10 @@ public class AnimationEffect extends Animation implements Tickable{
         }
         if(frame >= maxFrames)
         {
+//            if(listener != null)
+//            {
+//                listener.handleCompletion(new CompletionEvent(this));
+//            }
             return true;
         }
         else

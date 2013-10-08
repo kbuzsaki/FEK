@@ -7,8 +7,7 @@ import javax.swing.JPanel;
 
 public class PanelEffects extends JPanel {
     
-    public PanelEffects(int width, int height) {
-        setBounds(0,0, width, height);
+    public PanelEffects() {
         setLayout(null);
         setOpaque(false);
     }

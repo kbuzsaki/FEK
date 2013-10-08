@@ -23,51 +23,50 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Rectangle;
+import java.util.EnumMap;
 import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 
 public class PanelInfoStats extends JPanel{
-    private PanelInfoAttribute STRAttrPanel;
-    private PanelInfoAttribute SKLAttrPanel;
-    private PanelInfoAttribute SPDAttrPanel;
-    private PanelInfoAttribute LCKAttrPanel;
-    private PanelInfoAttribute DEFAttrPanel;
-    private PanelInfoAttribute RESAttrPanel;
+    private static final AttributeType[] attributesDisplayed = 
+        { AttributeType.STR, AttributeType.SKL, AttributeType.SPD,
+            AttributeType.LCK, AttributeType.DEF, AttributeType.RES
+        };
+    private EnumMap<AttributeType, PanelInfoAttribute> attrPanels;
     
     /**
      * Creates a PanelInfoStats object, which displays the unit's stats.
-     * @param bounds The size of of the info panel created.
      */
-    public PanelInfoStats(Rectangle bounds) {
+    public PanelInfoStats() {
         GridLayout statsLayout = new GridLayout(6,1);
         setLayout(statsLayout);
         setBorder(new LineBorder(Color.GREEN));
-        setBounds(bounds);
         
-        STRAttrPanel = new PanelInfoAttribute(AttributeType.STR, new Dimension(bounds.width, bounds.height/6));
-        SKLAttrPanel = new PanelInfoAttribute(AttributeType.SKL, new Dimension(bounds.width, bounds.height/6));
-        SPDAttrPanel = new PanelInfoAttribute(AttributeType.SPD, new Dimension(bounds.width, bounds.height/6));
-        LCKAttrPanel = new PanelInfoAttribute(AttributeType.LCK, new Dimension(bounds.width, bounds.height/6));
-        DEFAttrPanel = new PanelInfoAttribute(AttributeType.DEF, new Dimension(bounds.width, bounds.height/6));
-        RESAttrPanel = new PanelInfoAttribute(AttributeType.RES, new Dimension(bounds.width, bounds.height/6));
+        attrPanels = new EnumMap(AttributeType.class);
         
-        add(STRAttrPanel);
-        add(SKLAttrPanel);
-        add(SPDAttrPanel);
-        add(LCKAttrPanel);
-        add(DEFAttrPanel);
-        add(RESAttrPanel);
+        for (AttributeType attributeType : attributesDisplayed)
+        {
+            attrPanels.put(attributeType, new PanelInfoAttribute(attributeType));
+            add(attrPanels.get(attributeType));
+        }
+    }
+    
+    @Override
+    public void setSize(int width, int height) {
+        super.setSize(width, height);
+        for (PanelInfoAttribute attrPanel : attrPanels.values())
+            attrPanel.setSize(getWidth(), getHeight()/6);
+    }
+    @Override
+    public void setSize(Dimension size) {
+        setSize(size.width, size.height);
     }
     
     public void setValues(Stats stats) {
         if (stats != null) // if the unit sent exists, send that unit's stats
         {
-            STRAttrPanel.setValues(stats.getSTR());
-            SKLAttrPanel.setValues(stats.getSKL());
-            SPDAttrPanel.setValues(stats.getSPD());
-            LCKAttrPanel.setValues(stats.getLCK());
-            DEFAttrPanel.setValues(stats.getDEF());
-            RESAttrPanel.setValues(stats.getRES());
+            for (PanelInfoAttribute attrPanel : attrPanels.values())
+                attrPanel.setValues(stats.get(attrPanel.getType()));
         }
         else // otherwise, send a blank value
         {
@@ -75,11 +74,7 @@ public class PanelInfoStats extends JPanel{
         }
     }
     public void clear() {
-        STRAttrPanel.clear();
-        SKLAttrPanel.clear();
-        SPDAttrPanel.clear();
-        LCKAttrPanel.clear();
-        DEFAttrPanel.clear();
-        RESAttrPanel.clear();
+        for (PanelInfoAttribute attrPanel : attrPanels.values())
+            attrPanel.clear();
     }
 }

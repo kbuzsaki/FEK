@@ -4,120 +4,98 @@
 package Game.Menus;
 
 import Game.Command;
-import Game.Command;
-import Game.Cursor;
 import Game.Cursor;
 import Game.Level;
-import Game.Level;
-import Maps.Map;
-import Maps.Square;
-import Sprites.BoardElement;
+import Game.Sound.SoundManager;
+import Sprites.Panels.GameScreen;
+import Units.Items.Item;
+import Units.Items.ItemFilter;
 import Units.Unit;
-import java.awt.Dimension;
 import java.util.ArrayList;
-import javax.swing.JPanel;
 
-public abstract class MenuSelection extends JPanel implements Menu{
+public abstract class MenuSelection extends Menu implements ItemFilter {
     protected Level level;
-    private Dimension mapSize;
     protected Cursor cursor;
-    private ArrayList<Unit> selectableUnits;
-    private boolean isOpen = false;
-    private int index = 0;
     
-    public MenuSelection(Level level, Dimension mapSize, Cursor cursor) {
+    private ArrayList<Unit> selectableUnits;
+    
+    public MenuSelection(Level level, GameScreen gameScreen, 
+            SoundManager soundManager, Cursor cursor) {
+        super(gameScreen, soundManager);
         this.level = level;
-        this.mapSize = mapSize;
         this.cursor = cursor;
-        
-        setLayout(null);
-        setOpaque(false);
-        setVisible(false);
         
         setPreferredSize(getSize());
     }
     
+    @Override
+    protected void updateIndex(int index ) {
+        cursor.moveTo(selectableUnits.get(index).getPosition());
+        cursor.showCursor();
+        reconstructMenu(index);
+    }
+    
+    @Override // unsupported, needs equipmentindex and selectable units
+    final void openQuietly(Menu parentMenu, CancelListener cancelListener) {
+        throw new UnsupportedOperationException("Cannot directly open selection menu");
+    }
+    protected void openQuietly(ArrayList<Unit> selectableUnits, CancelListener cancelListener) {
+        // menu now assumes that the correct item has been equiped already
+        
+        this.selectableUnits = selectableUnits;
+        setMaxIndex(selectableUnits.size());
+        cursor.showCursor();
+        cursor.getMapAnim().setSelect();
+        
+        super.openQuietly(null, cancelListener);
+    }
+    abstract void openQuietly(CancelListener cancelListener);
+    
+    @Override
+    public void close() {
+        super.close();
+        cursor.hideCursor();
+        level.getPanelEffectsTile().reset();
+    }
+    
+    @Override
     public final boolean keyHandle(Command button) {
         switch(button)
         {
-            case A:
-                performAction();
-                close();
-                return true;
-            case B:
-                cancel();
-                return true;
-            case UP:
-            case RIGHT:
-                setIndex(index + 1);
-                break;
-            case DOWN:
             case LEFT:
-                setIndex(index - 1);
-                break;
-                
+                soundManager.playSoundEffect(SoundManager.menuBlipLow);
+                decrementIndex();
+                return true;
+            case RIGHT: 
+                soundManager.playSoundEffect(SoundManager.menuBlipLow);
+                incrementIndex();
+                return true;
+            default:
+                return super.keyHandle(button);
         }
-        return false;
-    }
-    private void setIndex(int index) {
-        if (index < 0)
-        {
-            this.index = (selectableUnits.size() - 1);
-        }
-        else 
-        {
-            this.index = (index % selectableUnits.size());
-        }
-        cursor.moveTo(selectableUnits.get(this.index).getPosition());
-        reconstructMenu();
     }
     
-    public void open(ArrayList<Unit> selectableUnits) {
-        updatePosition(cursor.getX());
-        isOpen = true;
-        setVisible(true);
-        this.selectableUnits = selectableUnits;
-        this.setIndex(0);
+    protected Unit getActor() {
+        return cursor.getSelectedUnit();
     }
-    public void close() {
-        isOpen = false;
-        index = 0;
-        setVisible(false);
-        level.getPanelEffectsTile().reset();
-    }
-    public boolean isOpen() {
-        return isOpen;
-    }
-    public void cancel() {
-        close();
-        cursor.cancelTargetSelection(); // TODO: make a less limiting cancel
-    }
-    
-    protected Unit getTargetedUnit() {
+    protected Unit getTarget(int index) {
         return selectableUnits.get(index);
     }
-    protected Square getTargetedSquare() {
-        return level.getMap().getSquareAt(cursor.getPosition());
-    }
+    
+    abstract void updateRanges(Item item);
     
     // FIXME: Magic numbers (make work for different menu sizes?)
-    public void updatePosition(int x) {
+    @Override
+    protected void updatePosition() {
         // If the cursor is on the left half of the screen
-        if (x + 1 < (mapSize.width / Map.tileS) / 2)
+        if (gameScreen.cursorIsOnLeft())
         {
-            setLocation((mapSize.width * 51/52 - getWidth()), mapSize.height * 1/32);
+            setLocation((gameScreen.getScreenSize().width * 51/52 - getWidth()), gameScreen.getScreenSize().height * 1/32);
         }
         else // Otherwise the cursor must be on the right half of the screen
         {
-            setLocation((mapSize.width * 1/52), mapSize.height * 1/32);
+            setLocation((gameScreen.getScreenSize().width * 1/52), gameScreen.getScreenSize().height * 1/32);
         }
     }
     
-    protected abstract void reconstructMenu();
-    /**
-     * sets the tick for all animations associated with the menu
-     * @param tick the tick set
-     */
-    public abstract void setTick(int tick);
-    protected abstract void performAction();
 }

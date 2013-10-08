@@ -12,10 +12,8 @@ public class Attack {
     private boolean isHit;
     private boolean isCrit;
     private boolean isKillingBlow;
-    private boolean soundEffectPlayed;
     
-    private int tick = 0;
-    private int maxTick = 20;
+    private boolean isComplete = false;
 
     public Attack(Unit attacking, Unit defending, int damage, boolean isHit, boolean isCrit, boolean isKillingBlow) {
         this.attacking = attacking;
@@ -45,28 +43,10 @@ public class Attack {
         return isHit;
     }
     
-    public void addTick() {
-        tick++;
-    }
-    public int getTick() {
-        return tick;
-    }
-    
-    public boolean shouldMoveForward() {
-        return (tick <= 4);
-    }
-    public boolean isPastHalf() {
-        return (tick > (maxTick - 4));
+    public void setComplete() {
+        isComplete = true;
     }
     public boolean isComplete() {
-        return (tick >= maxTick);
-    }
-    public boolean playSoundEffect() {
-        if(!soundEffectPlayed)
-        {
-            soundEffectPlayed = true;
-            return true;
-        }
-        return false;
+        return isComplete;
     }
 }

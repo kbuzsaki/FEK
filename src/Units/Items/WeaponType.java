@@ -18,4 +18,25 @@ public enum WeaponType {
     WeaponType(boolean isMagic) {
         this.isMagic = isMagic;
     }
+    
+    public static WeaponType getTypeOf(Equipment equip) {
+        if(equip instanceof Sword) {
+            return SWORD;
+        } else if (equip instanceof Lance) {
+            return LANCE;
+        } else if (equip instanceof Axe) {
+            return AXE;
+//        } else if (equip instanceof Bow) {
+//            return LANCE;
+//        } else if (equip instanceof Anima) {
+//            return LANCE;
+//        } else if (equip instanceof Light) {
+//            return LANCE;
+//        } else if (equip instanceof Dark) {
+//            return LANCE;
+        } else if (equip instanceof Staff) {
+            return STAFF;
+        }
+        return null;
+    }
 }

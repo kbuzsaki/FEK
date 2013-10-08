@@ -4,47 +4,40 @@
 package Units;
 
 import Units.Items.Equipment;
-import java.util.Random;
 import Units.Items.WeaponType;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
 
 // TODO: clean up all of this mov/con/aid shit
 public class Stats {
+    public static final int MOVE_CAP = 15;
+    
     private int totalXP;
     
-    private Attribute HP;  
-    private Attribute STR;
-    private Attribute SKL;
-    private Attribute SPD;
-    private Attribute LCK;
-    private Attribute DEF;
-    private Attribute RES;
-    private Attribute CON;
-//    private Attribute AID;
-    private Attribute MOV;
-    
-    private int SwordXP;
-    private int LanceXP;
-    private int AxeXP;
-    private int BowXP;
-    private int AnimaXP;
-    private int LightXP;
-    private int DarkXP;
-    private int StaffXP;
-
-    public Random rng = new Random();
+    private EnumMap<AttributeType, Attribute> attributes;
+    private EnumMap<WeaponType, Integer> weaponLevels;
 
     public Stats (UnitClass unitClass, int level) {
         totalXP = (level - 1) * 100;
         
-        HP = new Attribute(unitClass.HP);
-        STR = new Attribute(unitClass.STR);
-        SKL = new Attribute(unitClass.SKL);
-        SPD = new Attribute(unitClass.SPD);
-        LCK = new Attribute(unitClass.LCK);
-        DEF = new Attribute(unitClass.DEF);
-        RES = new Attribute(unitClass.RES);
-        CON = new Attribute(unitClass.CON);
-        MOV = new Attribute(unitClass.MOV);
+        attributes = new EnumMap(AttributeType.class);
+        
+        attributes.put(AttributeType.HP, new Attribute(unitClass.HP));
+        attributes.put(AttributeType.STR, new Attribute(unitClass.STR));
+        attributes.put(AttributeType.SKL, new Attribute(unitClass.SKL));
+        attributes.put(AttributeType.SPD, new Attribute(unitClass.SPD));
+        attributes.put(AttributeType.LCK, new Attribute(unitClass.LCK));
+        attributes.put(AttributeType.DEF, new Attribute(unitClass.DEF));
+        attributes.put(AttributeType.RES, new Attribute(unitClass.RES));
+        attributes.put(AttributeType.CON, new Attribute(unitClass.CON));
+        attributes.put(AttributeType.MOV, new Attribute(unitClass.MOVE));
+        
+        weaponLevels = new EnumMap(WeaponType.class);
+        for(WeaponType type : WeaponType.values())
+        {
+            weaponLevels.put(type, Equipment.WEAPON_LEVEL_NONE);
+        }
         
         for (int i = 1; i < level; i++)
         {
@@ -64,60 +57,47 @@ public class Stats {
         return totalXP;
     }
     
+    public Attribute get(AttributeType attributeType) {
+        return attributes.get(attributeType);
+    }
     public Attribute getHP() {
-        return HP;
+        return attributes.get(AttributeType.HP);
     }
-    public Attribute getSTR() {
-        return STR;
+    public Attribute getStr() {
+        return attributes.get(AttributeType.STR);
     }
-    public Attribute getSKL() {
-        return SKL;
+    public Attribute getSkl() {
+        return attributes.get(AttributeType.SKL);
     }
-    public Attribute getSPD() {
-        return SPD;
+    public Attribute getSpd() {
+        return attributes.get(AttributeType.SPD);
     }
-    public Attribute getLCK() {
-        return LCK;
+    public Attribute getLck() {
+        return attributes.get(AttributeType.LCK);
     }
-    public Attribute getDEF() {
-        return DEF;
+    public Attribute getDef() {
+        return attributes.get(AttributeType.DEF);
     }
-    public Attribute getRES() {
-        return RES;
+    public Attribute getRes() {
+        return attributes.get(AttributeType.RES);
     }
-    public Attribute getCON() {
-        return CON;
+    public Attribute getMov() {
+        return attributes.get(AttributeType.MOV);
     }
-//    public Attribute getAID() {
-//        return AID;
-//    }
-    public Attribute getMOV() {
-        return MOV;
+    public Attribute getCon() {
+        return attributes.get(AttributeType.CON);
     }
 
     public void resetStats() {
-        HP.reset();
-        STR.reset();
-        SKL.reset();
-        SPD.reset();
-        LCK.reset();
-        DEF.reset();
-        RES.reset();
-//        CON.reset();
-//        AID.reset();
-        MOV.reset();
+        // TODO: better way of dealing with not resetting HP
+        Collection<Attribute> resetableAttributes = new ArrayList<>(attributes.values());
+        resetableAttributes.remove(getHP());
+        for (Attribute attribute : resetableAttributes)
+            attribute.reset();
     }
     public void levelUp () {
-        HP.levelUp();
-        STR.levelUp();
-        SKL.levelUp();
-        SPD.levelUp();
-        LCK.levelUp();
-        DEF.levelUp();
-        RES.levelUp();
-//        CON.levelUp();
-//        AID.levelUp();
-        MOV.levelUp();
+        for (Attribute attribute : attributes.values())
+            attribute.levelUp();
     }
     
     /**
@@ -138,104 +118,36 @@ public class Stats {
      * @param type The weapon type that you wish to lookup.
      * @return The total experience for the specified type.
      */
-    public int getWeaponXP(Equipment equip) {
-//        switch (type) {
-//            case SWORD:
-//                return SwordXP;
-//            case LANCE:
-//                return LanceXP;
-//            case AXE:
-//                return AxeXP;
-//            case BOW:
-//                return BowXP;
-//            case ANIMA:
-//                return AnimaXP;
-//            case LIGHT:
-//                return LightXP;
-//            case DARK:
-//                return DarkXP;
-//            case STAFF:
-//                return StaffXP;
-//            default:
-                return 10;
-//        }
+    public int getWeaponXP(WeaponType type) {
+        return weaponLevels.get(type);
     }
     public void setWeaponXP(WeaponType type, int newValue) {
-        switch (type) {
-            case SWORD:
-                SwordXP = newValue;
-                break;
-            case LANCE:
-                LanceXP = newValue;
-                break;
-            case AXE:
-                AxeXP = newValue;
-                break;
-            case BOW:
-                BowXP = newValue;
-                break;
-            case ANIMA:
-                AnimaXP = newValue;
-                break;
-            case LIGHT:
-                LightXP = newValue;
-                break;
-            case DARK:
-                DarkXP = newValue;
-                break;
-            case STAFF:
-                StaffXP = newValue;
-                break;
-        }
+        weaponLevels.put(type, newValue);
     }
     public void addWeaponXP(WeaponType type, int addition) {
-        switch (type) {
-            case SWORD:
-                SwordXP += addition;
-                break;
-            case LANCE:
-                LanceXP += addition;
-                break;
-            case AXE:
-                AxeXP += addition;
-                break;
-            case BOW:
-                BowXP += addition;
-                break;
-            case ANIMA:
-                AnimaXP += addition;
-                break;
-            case LIGHT:
-                LightXP += addition;
-                break;
-            case DARK:
-                DarkXP += addition;
-                break;
-            case STAFF:
-                StaffXP += addition;
-                break;
-        }
+        weaponLevels.put(type, weaponLevels.get(type) + addition);
     }
     public boolean hasSRank() {
-        if (SwordXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (LanceXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (AxeXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (BowXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (AnimaXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (LightXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (DarkXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        if (StaffXP == Equipment.WEAPON_LEVEL_S)
-            return true;
-        else 
-        {
-            return false;
-        }
+        return false;
+//        if (SwordXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (LanceXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (AxeXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (BowXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (AnimaXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (LightXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (DarkXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        if (StaffXP == Equipment.WEAPON_LEVEL_S)
+//            return true;
+//        else 
+//        {
+//            return false;
+//        }
     }
 }

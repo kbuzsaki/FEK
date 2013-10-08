@@ -21,7 +21,6 @@ import java.util.ArrayList;
 public final class Inventory 
 {
     
-    // FIXME: Redo inventory, esp functions
     private ArrayList<Item> inventory;
     private Unit owner;
     
@@ -38,7 +37,7 @@ public final class Inventory
         }
     }
     
-    public final void setOwner(Unit owner) {
+    public void setOwner(Unit owner) {
         this.owner = owner;
         
         for (int i = 0; i < inventory.size(); i++) 
@@ -46,27 +45,98 @@ public final class Inventory
             inventory.get(i).setOwner(owner);
         }
     }
-    public final int getSize() {
+    public int size() {
         return inventory.size();
     }
-    public final void add(Item item) {
-        inventory.add(item);
-        item.setOwner(owner);
+    public boolean isEmpty() {
+        return size() == 0;
     }
-    public final void drop(int index) {
-        inventory.remove(index);
+    public boolean isFull() {
+        return size() == MAX_CAPACITY;
     }
     
+    public void add(Item item) {
+        if(!isFull())
+        {
+            inventory.add(item);
+            item.setOwner(owner);
+        }
+        else
+        {
+            throw new IndexOutOfBoundsException("Attempting to add item to a full inventory.");
+        }
+    }
+    public void drop(Item item) {
+        if(inventory.remove(item))
+        {
+            Game.Game.logInfo(owner.getName() + " dropped " + item.getName());
+            // TODO: drop message?
+        }
+        else
+        {
+            throw new IllegalArgumentException("Item not in inventory: " 
+                    + item.toString() );
+        }
+    }
+    public void breakItem(Item item) {
+        if(inventory.remove(item))
+        {
+            // TODO: remove message?
+            // TODO: InventoryChangeEvent? Unit as listener?
+        }
+        else
+        {
+            throw new IllegalArgumentException("Item not in inventory: " 
+                    + item.toString() );
+        }
+    }
+    
+    public Item swap(Item swapItem, int swapIndex) {
+        Item replacedItem = getItem(swapIndex);
+        
+        if(swapItem != null)
+            if(swapIndex < inventory.size())
+                inventory.set(swapIndex, swapItem);
+            else
+                inventory.add(swapItem);
+        else
+            inventory.remove(swapIndex);
+        
+        return replacedItem;
+    }
+   
+    public int indexOf(Item item) {
+        return inventory.indexOf(item);
+    }
+    public void move(int startIndex, int endIndex) {
+        Item temp = inventory.remove(startIndex);
+        inventory.add(endIndex, temp);
+    }
+    public void equip(int index) {
+        move(index, 0);
+    }
+    public void equip(Equipment equipment) {
+        if(inventory.contains(equipment))
+        {
+            equip(indexOf(equipment));
+        }
+        else
+        {
+            throw new IllegalArgumentException("Equipment not in inventory: " 
+                    + equipment.toString() );
+        }
+    }
+    
+    // getter methods for different types of item
     public Item[] getItems() {
         return inventory.toArray(new Item[inventory.size()]);
     }
     public Item getItem(int index) {
         assert (index >= 0)&&(index < MAX_CAPACITY) : "Invalid inventory index";
-        try {
+        if(index < inventory.size())
             return inventory.get(index);
-        } catch (IndexOutOfBoundsException ex) {
+        else
             return null;
-        }
     }
     
     public Equipment[] getEquipment() {
@@ -150,8 +220,8 @@ public final class Inventory
         return false;
     }
     
-    public void useUp(Item item) {
-        inventory.remove(item);
+    public static void trade(Inventory inv1, int index1, Inventory inv2, int index2) {
+        Item tempItem = inv1.swap(inv2.getItem(index2), index1);
+        inv2.swap(tempItem, index2);
     }
-    
 }

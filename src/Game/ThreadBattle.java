@@ -4,110 +4,80 @@
 package Game;
 
 import Game.Sound.SoundManager;
-import Sprites.AnimUtils;
-import Sprites.ThreadTick;
+import Sprites.SpriteUtil;
+import Sprites.Direction;
+import Sprites.Panels.PanelHealthInteraction;
 
-public class ThreadBattle extends Thread{
-    private static final int INITIAL_DELAY = 500;
-    private static final int BATTLE_DELAY = 20;
-    private static final int BAR_FILL_DELAY = 10;
+public class ThreadBattle extends ThreadInteraction {
     
-    private Level level;
-    private SoundManager soundManager;
     private Battle battle;
     private Attack currentAttack;
     
-    private ThreadTick tickThread;
-    private boolean isFinished = false;
-    
-    public ThreadBattle(Level level, SoundManager soundManager, Battle battle) {
-        this.level = level;
-        this.soundManager = soundManager;
+    public ThreadBattle(Level level, SoundManager soundManager, 
+            PanelHealthInteraction interactionHealthPanel, Battle battle) {
+        super(level, soundManager, interactionHealthPanel);
         this.battle = battle;
         
         setName("BattleThread " + battle.getAttacking().getName() + " v.s. " + battle.getDefending().getName() );
     }
     
-    public void run() {
-        // initial wait
-        try {
-                sleep(INITIAL_DELAY);
-        } catch (InterruptedException ex) {}
+    @Override
+    protected void beginInteraction() {
+        SpriteUtil.setAppropriateAnimation(battle.getAttacking(), 
+                battle.getAttacking().getPosition(), battle.getDefending().getPosition());
+        SpriteUtil.setAppropriateAnimation(battle.getDefending(), 
+                battle.getDefending().getPosition(), battle.getAttacking().getPosition());
         
-        runBattleLoop();
+        interactionHealthPanel.setValues(battle.getAttacking(), battle.getDefending());
+        interactionHealthPanel.open((battle.getAttacking().getY() + battle.getDefending().getY()) / 2);
     }
-    
-    private void runBattleLoop() {
-        while(!isFinished) 
+    @Override
+    protected void endInteraction() {
+        // the battle is over
+        if (battle.getAttacking().isDead())
         {
-            if((tickThread == null) || tickThread.isFinished())
-            {
-                processBattle();
-            }
-            
-            try {
-                sleep(BATTLE_DELAY);
-            } catch (InterruptedException ex) {}
+            level.markUnitDead(battle.getAttacking());
         }
+        else if (battle.getDefending().isDead())
+        {
+            level.markUnitDead(battle.getDefending());
+        }
+        
+        battle.getAttacking().getMapAnim().setStand();
+        battle.getDefending().getMapAnim().setStand();
+        
+        level.getPanelInfoHealths().delayedClose();
+        
+        level.getCursor().endAction();
     }
-    private void processBattle() {
+    @Override
+    protected void processInteraction() {
         if((currentAttack == null) || currentAttack.isComplete()) // if the current attack is complete / doesn't exist
         {
             if(!battle.isFinished()) // if the battle is not finished
             {
                 currentAttack = battle.nextAttack();
-                level.getPanelInfoHealths().update();
-                
-                tickThread = new ThreadTick(level.getPanelInfoHealths(), BAR_FILL_DELAY);
-                tickThread.start();
-            }
-            else
-            {
-                // the battle is over
-                level.getPanelInfoHealths().delayedClose();
-                
-                battle.getAttacking().getMapAnim().setStand();
-                battle.getDefending().getMapAnim().setStand();
-                
-                if (battle.getAttacking().isDead())
-                {
-                    level.markUnitDead(battle.getAttacking());
-                }
-                else if (battle.getDefending().isDead())
-                {
-                    level.markUnitDead(battle.getDefending());
-                }
-                level.getCursor().endAction();
-                isFinished = true;
+                interactionHealthPanel.update(this);
             }
         }
-        else // the current attack is continuing
+        else // the current attack must take place
         {
-            if(currentAttack.playSoundEffect())
-            {
-                playSoundEffect(currentAttack);
-            }
-            
-            currentAttack.addTick();
-            
-            int distance = 0;
-            if(currentAttack.shouldMoveForward())
-            {
-                Game.log(currentAttack.getAttacking().getName() + " should move forward");
-                distance = 1;
-            }
-            else if (currentAttack.isPastHalf())
-            {
-                Game.log(currentAttack.getAttacking().getName() + " is past half.");
-                distance = -1;
-            }
-            
-            AnimUtils.nudgeUnit(currentAttack.getAttacking().getMapAnim(), 
-                        currentAttack.getAttacking().getPosition(), currentAttack.getDefending().getPosition(),
-                        distance);
+            playSoundEffect(currentAttack, soundManager);
+            currentAttack.getAttacking().getMapAnim().actionBump(
+                    Direction.getDirection(
+                    currentAttack.getAttacking().getPosition(), 
+                    currentAttack.getDefending().getPosition()), 
+                    level.getMapScreen(), this);
+            currentAttack.setComplete();
         }
     }
-    private void playSoundEffect(Attack currentAttack) {
+    
+    @Override
+    protected boolean interactionIsFinished() {
+        return battle.isFinished() && ((currentAttack == null) || currentAttack.isComplete());
+    }
+    
+    public static void playSoundEffect(Attack currentAttack, SoundManager soundManager) {
         if(currentAttack.isHit())
         {
             if(currentAttack.isCrit())

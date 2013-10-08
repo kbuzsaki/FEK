@@ -22,8 +22,7 @@ public abstract class Item implements Serializable {
     
     protected Unit owner;
     
-    public static final int width = 16;
-    public static final int height = 16;
+    public static final int ICON_EDGE_LENGTH = 16;
     public static final BufferedImage spriteSheet;
     static {
         BufferedImage tempSpriteSheet = null;
@@ -54,7 +53,14 @@ public abstract class Item implements Serializable {
         return name;
     }
     public ImageComponent getIcon() {
-        return new ImageComponent(spriteSheet.getSubimage(spriteX*width, spriteY*height, width, height));
+        return new ImageComponent(getIconImage());
+    }
+    public BufferedImage getIconImage() {
+        return spriteSheet.getSubimage(
+                spriteX*ICON_EDGE_LENGTH, 
+                spriteY*ICON_EDGE_LENGTH, 
+                ICON_EDGE_LENGTH, 
+                ICON_EDGE_LENGTH);
     }
     public String getDescription() {
         return description;
@@ -68,17 +74,21 @@ public abstract class Item implements Serializable {
     public final int getTotalUses() {
         return totalUses;
     }
-    public boolean isBroken() {
+    
+    protected boolean shouldBreak() {
         return (uses <= 0);
     }
     
-    /**
-     * "Uses" an item, by removing one use from its use count. If the item is
-     * broken (has 0 uses), the method returns true. Otherwise, returns false.
-     * @return true if the item is used up
-     */
-    public boolean use() {
+    public boolean isDiscardable() {
+        return true;
+    }
+
+    public void decrementUses() {
         uses--;
-        return isBroken();
+        
+        if(shouldBreak())
+        {
+            owner.getInventory().breakItem(this);
+        }
     }
 }

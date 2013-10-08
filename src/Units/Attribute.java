@@ -66,7 +66,7 @@ public class Attribute {
             value = valueCap;
         }
         
-        Game.log(this.getName() + " " + valueIncrease + " - " + value + "/" + valueCap);
+        Game.logInfo(this.getName() + " " + valueIncrease + " - " + value + "/" + valueCap);
         reset();
         return valueIncrease;
     }
@@ -81,7 +81,7 @@ public class Attribute {
      * Accesses the base value for the attribute, before modifiers.
      * @return value
      */
-    public int getValue() {
+    public int getValT() {
         return value;
     }
     /**
@@ -95,7 +95,7 @@ public class Attribute {
      * Accesses the maximum value for this attribute in this class
      * @return valueCap
      */
-    public int getCap() {
+    public int getValCap() {
         return valueCap;
     }
     
@@ -110,6 +110,9 @@ public class Attribute {
     }
     public void set(int effectiveValue) {
         this.effectiveValue = effectiveValue;
+    }
+    public void add(int dEffectiveValue) {
+        effectiveValue += dEffectiveValue;
     }
     
     private int getRand() {

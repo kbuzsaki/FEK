@@ -4,9 +4,9 @@
 package Sprites;
 
 public class ThreadTick extends Thread{
-    Tickable tickable;
-    int delay;
-    boolean isFinished = false;
+    private Tickable tickable;
+    private int delay;
+    private boolean isFinished = false;
     
     public ThreadTick(Tickable tickable, int delay) {
         this.tickable = tickable;

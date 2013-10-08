@@ -5,95 +5,91 @@ package Game.Menus;
 
 import Game.Cursor;
 import Game.Level;
+import Game.Sound.SoundManager;
 import Game.StaffInteraction;
 import Sprites.AnimationMapUnit;
-import Sprites.Character;
+import Sprites.Text;
 import Sprites.ImageComponent;
+import Sprites.Panels.GameScreen;
+import Units.Items.Item;
+import Units.Items.Staff;
 import Units.UnitClass;
-import java.awt.Dimension;
 import javax.swing.JPanel;
 
 public class MenuSelectionStaff extends MenuSelection{
-    private ImageComponent background;
-    private JPanel unitInfoPanel;
-        private AnimationMapUnit unitInfoAnim;
-        private ImageComponent name;
-    private ImageComponent statName;
-    private ImageComponent statStartSeparator;
-    private ImageComponent statStartCurrent;
-    private ImageComponent statStartTotal;
-    private ImageComponent statEndSeparator;
-    private ImageComponent statEndCurrent;
-    private ImageComponent statEndTotal;
+    private PanelNamePlate infoPanel;
     
     private StaffInteraction staffInteraction;
     
+    private static final int ANIM_X = 9;
+    private static final int ANIM_OFFSET_Y = 16;
+    private static final int namePanelUnitHeight = 4;
     private static final int offset = 16;
     private static final int unitInfoHeight = 20;
     
-    public MenuSelectionStaff(Level level, Dimension mapSize, Cursor cursor) {
-        super(level, mapSize, cursor);
+    public MenuSelectionStaff(Level level, GameScreen gameScreen, 
+            SoundManager soundManager, Cursor cursor) {
+        super(level, gameScreen, soundManager, cursor);
         
-        background = new ImageComponent("resources/gui/window/staffMenuBlank.png");
-        setSize(background.getSize());
+        infoPanel = new PanelNamePlate();
         
-        unitInfoAnim = new AnimationMapUnit(UnitClass.BANDIT.spriteFileName);
-        unitInfoAnim.setLocationCentered(9, 4);
-        name = Character.getImageComponent("Kent");
-        name.setLocation(31, 6);
+        add(infoPanel);
         
-        statName = Character.getImageComponent("HP", Character.YELLOW);
-        statName.setLocation(4, unitInfoHeight + 3);
-        statStartSeparator = Character.getImageComponent("/", Character.YELLOW);
-        statStartSeparator.setLocation(44, unitInfoHeight + 4);
-        statStartCurrent = Character.getImageComponent("22");
-        statStartCurrent.setLocation(44 - statStartCurrent.getWidth(), unitInfoHeight + 4);
-        statStartTotal = Character.getImageComponent("39");
-        statStartTotal.setLocation(52, unitInfoHeight + 4);
-        
-        statEndSeparator = Character.getImageComponent("/", Character.YELLOW);
-        statEndSeparator.setLocation(44, unitInfoHeight + 4 + offset);
-        statEndCurrent = Character.getImageComponent("22");
-        statEndCurrent.setLocation(44 - statEndCurrent.getWidth(), unitInfoHeight + 4 + offset);
-        statEndTotal = Character.getImageComponent("39");
-        statEndTotal.setLocation(52, unitInfoHeight + 4 + offset);
-        
-        add(unitInfoAnim);
-        add(name);
-        add(statName);
-        add(statStartSeparator);
-        add(statStartCurrent);
-        add(statStartTotal);
-        add(statEndSeparator);
-        add(statEndCurrent);
-        add(statEndTotal);
-        add(background);
+        setSize(infoPanel.getSize());
+        setLayout(null);
+        setOpaque(false);
+        setVisible(false);
     }
     
     @Override
-    protected void reconstructMenu() {
-        staffInteraction = new StaffInteraction(cursor.getSelectedUnit(), getTargetedUnit());
-        
-        unitInfoAnim.loadAnimation(getTargetedUnit().getMapAnim());
-        name = Character.getImageComponent(getTargetedUnit().getName());
-        
-        statName.setImage(Character.getImageComponent(staffInteraction.getStatName(), Character.YELLOW));
-        statStartCurrent.setImage(Character.getImageComponent(String.valueOf(staffInteraction.getStatStartCurrent())));
-        statStartCurrent.setLocation(44 - statStartCurrent.getWidth(), unitInfoHeight + 4);
-        statStartTotal.setImage(Character.getImageComponent(String.valueOf(staffInteraction.getStatStartTotal())));
-        
-        statEndCurrent.setImage(Character.getImageComponent(String.valueOf(staffInteraction.getStatEndCurrent())));
-        statEndCurrent.setLocation(44 - statEndCurrent.getWidth(), unitInfoHeight+offset+4);
-        statEndTotal.setImage(Character.getImageComponent(String.valueOf(staffInteraction.getStatEndTotal())));
+    void openQuietly(CancelListener cancelListener) {
+        openQuietly(level.getMap().getUnitsAt(getActor().getStaffPoints()), cancelListener);
+        level.getPanelEffectsTile().updateStaffPoints(getActor().getStaffPoints());
+        infoPanel.open();
     }
-    
+    @Override
+    public void close() {
+        super.close();
+        infoPanel.close();
+    }
+    @Override
+    protected void reconstructMenu(int index) {
+        staffInteraction = new StaffInteraction(cursor.getSelectedUnit(), getTarget(index));
+        infoPanel.setInfo(getTarget(index), 
+                infoPanel.getAttributeImage(getTarget(index).getStats().getHP()));
+    }
     @Override
     public void setTick(int tick) {
-        unitInfoAnim.setTick(tick);
+        infoPanel.setTick(tick);
+    }
+    
+    @Override
+    public boolean isTargetable(Item item) {
+        if(item instanceof Staff)
+            return true;
+        else
+            return false;
     }
     @Override
-    protected void performAction() {
-        // TODO: launch a staffInteraction thread instead
+    public boolean isUseable(Item item) {
+        return isTargetable(item)&&getActor().isUseable(item);
+    }
+    
+    @Override
+    void updateRanges(Item item) {
+        if(item instanceof Staff)
+        {
+            level.getPanelEffectsTile().updateStaffPoints(getActor().getPointsInRangeWith((Staff)item));
+        }
+        else
+        {
+            level.getPanelEffectsTile().reset();
+        }
+    }
+    
+    @Override
+    protected void performAction(int index) {
+        cursor.hideCursor();
         level.initiateStaffInteraction(staffInteraction);
     }
     

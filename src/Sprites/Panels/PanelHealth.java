@@ -3,7 +3,7 @@
  */
 package Sprites.Panels;
 
-import Sprites.Character;
+import Sprites.Text;
 import Sprites.ImageComponent;
 import Sprites.SmallNumber;
 import Sprites.Tickable;
@@ -34,7 +34,7 @@ public class PanelHealth extends JPanel implements Tickable{
         healthBar1.setLocation(27 + 1, 19);
         healthBar2.setLocation(27, 19 + 1);
         
-        name = Character.getImageComponent("Lyn");
+        name = Text.getImageComponent("Lyn");
         name.setLocation( 9 + (60 - name.getWidth()) / 2, 3 );
         
         healthNumber = SmallNumber.getImageComponent("16");
@@ -60,7 +60,7 @@ public class PanelHealth extends JPanel implements Tickable{
     }
     
     public void setValues (String unitName, int health, int maxHealth) {
-        name.setImage(Character.getImageComponent(unitName));
+        name.setImage(Text.getImageComponent(unitName));
         name.setLocation( 9 + (60 - name.getWidth()) / 2, 3 );
         
         this.healthCap = maxHealth;
@@ -86,6 +86,7 @@ public class PanelHealth extends JPanel implements Tickable{
         this.futureHealth = futureHealth;
     }
     
+    @Override
     public boolean tick() {
         if (health == futureHealth)
         {

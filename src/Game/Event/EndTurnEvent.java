@@ -12,7 +12,10 @@ public class EndTurnEvent extends EventObject {
         super(level);
     }
 
-    public Level getSource() {
-        return (Level) super.getSource();
+    public Level getLevel() {
+        return (Level) source;
+    }
+    public int getTurnCount() {
+        return getLevel().getTurnCount();
     }
 }

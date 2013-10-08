@@ -3,15 +3,19 @@
  */
 package Units;
 
+import Sprites.SpriteUtil;
+
 public enum Faction {
-    BLUE("Blue"),
-    RED("Red"),
-    GREEN("Green");
+    BLUE("Blue", SpriteUtil.templateBlue),
+    RED("Red", SpriteUtil.templateRed),
+    GREEN("Green", SpriteUtil.templateBlue);
     
     public final String name;
+    public final int[] colorTemplate;
     
-    Faction (String name) {
+    Faction (String name, int[] colorTemplate) {
         this.name = name;
+        this.colorTemplate = colorTemplate;
     }
     
     public boolean isFriendlyTowards(Faction faction) {

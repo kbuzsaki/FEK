@@ -3,35 +3,33 @@
  */
 package Sprites.Panels;
 
+import Game.CursorMovementEvent;
+import Game.CursorMovementListener;
 import Maps.Terrain;
-import Sprites.Character;
+import Sprites.Text;
+import Sprites.ColumnLayout;
 import Sprites.ImageComponent;
 import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 
-public class PanelInfoTerrain extends JPanel {
+public class PanelInfoTerrain extends JPanel implements CursorMovementListener {
     private ImageComponent terrainName;
     private ImageComponent terrainIcon;
     private ImageComponent avoid;
     private ImageComponent defense;
     
-    public PanelInfoTerrain(Rectangle bounds) {
-        this.setBounds(bounds);
-        setPreferredSize(getSize());
+    public PanelInfoTerrain() {
         setBorder(new LineBorder(Color.YELLOW));
         setOpaque(false);
-        FlowLayout layout = new FlowLayout(FlowLayout.CENTER, 40, 20);
-        setLayout(layout);
+        setLayout(new ColumnLayout(10,0,8,ColumnLayout.CENTER));
 //        setLayout(null);
         
-        terrainName = Character.getImageComponent("Plains");
+        terrainName = Text.getImageComponent("Plains");
         terrainIcon = new ImageComponent();
-        avoid = Character.getImageComponent("Avoid: " + String.valueOf(20));
-        defense = Character.getImageComponent("Defense: " + String.valueOf(4));
+        avoid = Text.getImageComponent("Avoid: " + String.valueOf(20));
+        defense = Text.getImageComponent("Defense: " + String.valueOf(4));
         
         add(terrainName);
         add(terrainIcon);
@@ -39,11 +37,16 @@ public class PanelInfoTerrain extends JPanel {
         add(defense);
     }
     
-    public void setValues(Terrain terrain, BufferedImage terrainIcon) {
-        terrainName.setImage(Character.getImageComponent(terrain.name));
+    @Override
+    public void handleCursorMovement(CursorMovementEvent event) {
+        setValues(event.getTerrain(), event.getTerrainIcon());
+    }
+    
+    private void setValues(Terrain terrain, BufferedImage terrainIcon) {
+        terrainName.setImage(Text.getImageComponent(terrain.name));
         this.terrainIcon.setImage(terrainIcon);
-        avoid.setImage(Character.getImageComponent("Avoid: " + String.valueOf(terrain.avoidBonus)));
-        defense.setImage(Character.getImageComponent("Defense: " + String.valueOf(terrain.defenseBonus)));
+        avoid.setImage(Text.getImageComponent("Avoid: " + String.valueOf(terrain.avoidBonus)));
+        defense.setImage(Text.getImageComponent("Defense: " + String.valueOf(terrain.defenseBonus)));
         repaint();
     }
 }

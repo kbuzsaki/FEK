@@ -36,6 +36,7 @@ public abstract class Weapon extends Equipment {
      * @param enemyUnit the unit that the owner is fighting
      * @return the effective hit value
      */
+    @Deprecated
     public int getHit(Unit enemyUnit) {
         return hit;
     }
@@ -53,6 +54,7 @@ public abstract class Weapon extends Equipment {
      * @param enemyUnit the unit that the owner is fighting
      * @return the effective might value
      */
+    @Deprecated
     public int getMight(Unit enemyUnit) {
         return might;
     }
@@ -70,6 +72,7 @@ public abstract class Weapon extends Equipment {
      * @param enemyUnit the unit that the owner is fighting
      * @return the effective crit value
      */
+    @Deprecated
     public int getCrit(Unit enemyUnit) {
         return crit;
     }
@@ -87,6 +90,7 @@ public abstract class Weapon extends Equipment {
      * @param enemyUnit the unit that the owner is fighting
      * @return the effective weight value
      */
+    @Deprecated
     public int getWeight(Unit enemyUnit) {
         return weight;
     }
@@ -102,5 +106,13 @@ public abstract class Weapon extends Equipment {
     
     public abstract boolean hasWeaponTriangleAdvantage(Unit enemyUnit);
     public abstract boolean hasWeaponTriangleDisadvantage(Unit enemyUnit);
-    public abstract boolean isEffectiveAgainst(Unit enemyUnit);
+    public int getWeaponTriangleDeltaHit() {
+        return 5;
+    }
+    public int getWeaponTriangleDeltaMight() {
+        return 1;
+    }
+    public boolean isEffectiveAgainst(Unit enemyUnit) {
+        return false;
+    }
 }

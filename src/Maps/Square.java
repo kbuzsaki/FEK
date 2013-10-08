@@ -11,16 +11,19 @@ package Maps;
 
 import Units.Unit;
 import java.awt.Point;
+import java.awt.image.BufferedImage;
 
 public class Square {
     private Point position;
     private Unit unit;
     private Terrain terrain;
+    private BufferedImage terrainIcon;
 
-    public Square(Point position, Unit unit, Terrain terrain) {
+    public Square(Point position, Unit unit, Terrain terrain, BufferedImage terrainIcon) {
         this.position = position;
         this.unit = unit;
         this.terrain = terrain;
+        this.terrainIcon = terrainIcon;
     }
 
     public Point getPosition() {
@@ -28,6 +31,9 @@ public class Square {
     }
     public Terrain getTerrain() {
         return terrain;
+    }
+    public BufferedImage getTerrainIcon() {
+        return terrainIcon;
     }
     public Unit getUnit() {
         return unit;

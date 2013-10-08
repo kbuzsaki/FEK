@@ -4,6 +4,7 @@
 package Game.Event;
 
 import Units.Unit;
+import java.awt.Point;
 import java.util.EventObject;
 
 public class MoveEvent extends EventObject {
@@ -12,7 +13,7 @@ public class MoveEvent extends EventObject {
         super(movingUnit);
     }
     
-    public Unit getSource() {
-        return (Unit) super.getSource();
+    public Unit getMovingUnit() {
+        return (Unit) source;
     }
 }

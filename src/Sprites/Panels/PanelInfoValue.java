@@ -3,7 +3,7 @@
  */
 package Sprites.Panels;
 
-import Sprites.Character;
+import Sprites.Text;
 import Sprites.ImageComponent;
 import javax.swing.JPanel;
 
@@ -33,7 +33,7 @@ public class PanelInfoValue extends JPanel{
         barJPanel.setSize(barRight.getWidth() + barRight.getX(), barRight.getHeight());
         barJPanel.setPreferredSize(getSize());
         
-        valueText = Character.getImageComponent("0");
+        valueText = Text.getImageComponent("0");
         //valueText.setLocation((getWidth() - valueText.width)/2, (getHeight() - valueText.height)/2);
         
         setLayout(null);
@@ -57,7 +57,7 @@ public class PanelInfoValue extends JPanel{
         
         setSize(barJPanel.getWidth(), valueText.getHeight());
         
-        valueText.setImage(Character.getImageComponent(String.valueOf(value)));
+        valueText.setImage(Text.getImageComponent(String.valueOf(value)));
         valueText.setLocation((getWidth() - valueText.getWidth())/2, 0);
         repaint();
     }

@@ -15,16 +15,35 @@ public class Lance extends Weapon {
                 weaponXP, weaponLevel, rangeMin, rangeMax, hit, might, crit, weight);
     }
     
+    @Override
     public boolean isMagic(Unit enemyUnit) {
         return false;
     }
+    
+    @Override
     public boolean hasWeaponTriangleAdvantage(Unit enemyUnit) {
+        Weapon enemyWeapon = enemyUnit.getEquipedWeapon();
+        
+        if((enemyWeapon instanceof Sword)
+         /*&&!(enemyWeapon instanceof SwordReaver)*/)
+            return true;
+        
+//        if(enemyWeapon instanceof AxeReaver)
+//            return true;
+        
         return false;
     }
+    @Override
     public boolean hasWeaponTriangleDisadvantage(Unit enemyUnit) {
-        return false;
-    }
-    public boolean isEffectiveAgainst(Unit enemyUnit) {
+        Weapon enemyWeapon = enemyUnit.getEquipedWeapon();
+        
+        if((enemyWeapon instanceof Axe)
+         /*&&!(enemyWeapon instanceof AxeReaver)*/)
+            return true;
+        
+//        if(enemyWeapon instanceof SwordReaver)
+//            return true;
+        
         return false;
     }
 }

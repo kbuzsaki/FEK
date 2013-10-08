@@ -4,19 +4,23 @@
 package Game.Settings;
 
 import Game.Game;
+import Game.Level;
 import Game.Sound.SoundManager;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JTabbedPane;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 public class OptionWindow extends JDialog {
-    JTabbedPane tabbedPane;
-    KeyMapperPanel keyMapperPanel;
-    SoundManagerPanel soundManagerPanel;
+    private JTabbedPane tabbedPane;
+    private GeneralOptionsPanel generalOptionsPanel;
+    private KeyMapperPanel keyMapperPanel;
+    private SoundManagerPanel soundManagerPanel;
     
-    public OptionWindow(JFrame appWindow, final Game game, SoundManager soundManager, KeyMapper keyMapper) {
+    public OptionWindow(JFrame appWindow, final Game game, GameSettings settings, SoundManager soundManager) {
         super(appWindow, true);
         setLocation(appWindow.getX() + 30, appWindow.getY() + 25);
         setSize(450,420);
@@ -43,11 +47,19 @@ public class OptionWindow extends JDialog {
         });
         
         tabbedPane = new JTabbedPane();
+        tabbedPane.addChangeListener(new ChangeListener() {
+            public void stateChanged(ChangeEvent e) {
+                ((Updateable)tabbedPane.getSelectedComponent()).update();
+            }
+        });
         
-        keyMapperPanel = new KeyMapperPanel(keyMapper);
-        tabbedPane.addTab("Key Map", keyMapperPanel);
+        generalOptionsPanel = new GeneralOptionsPanel(settings, game);
+        tabbedPane.addTab("General", generalOptionsPanel);
         
-        soundManagerPanel = new SoundManagerPanel(soundManager);
+        keyMapperPanel = new KeyMapperPanel(settings.getKeyMapper());
+        tabbedPane.addTab("Key Binds", keyMapperPanel);
+        
+        soundManagerPanel = new SoundManagerPanel(settings, soundManager);
         tabbedPane.addTab("Sound", soundManagerPanel);
 
         add(tabbedPane);

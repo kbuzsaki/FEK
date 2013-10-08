@@ -14,17 +14,35 @@ public class Axe extends Weapon {
         super(name, 2, spriteX, description, uses, totalUses, price,
                 weaponXP, weaponLevel, rangeMin, rangeMax, hit, might, crit, weight);
     }
-    
+    @Override
     public boolean isMagic(Unit enemyUnit) {
         return false;
     }
+    
+    @Override
     public boolean hasWeaponTriangleAdvantage(Unit enemyUnit) {
+        Weapon enemyWeapon = enemyUnit.getEquipedWeapon();
+        
+        if((enemyWeapon instanceof Lance)
+         /*&&!(enemyWeapon instanceof LanceReaver)*/)
+            return true;
+        
+//        if(enemyWeapon instanceof SwordReaver)
+//            return true;
+        
         return false;
     }
+    @Override
     public boolean hasWeaponTriangleDisadvantage(Unit enemyUnit) {
-        return false;
-    }
-    public boolean isEffectiveAgainst(Unit enemyUnit) {
+        Weapon enemyWeapon = enemyUnit.getEquipedWeapon();
+        
+        if((enemyWeapon instanceof Sword)
+         /*&&!(enemyWeapon instanceof SwordReaver)*/)
+            return true;
+        
+//        if(enemyWeapon instanceof LanceReaver)
+//            return true;
+        
         return false;
     }
 }

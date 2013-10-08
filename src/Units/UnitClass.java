@@ -3,6 +3,8 @@
  */
 package Units;
 
+import Sprites.Animation;
+
 public enum UnitClass {
        //value cap growth
     BANDIT("Bandit", "bandit", MoveType.BANDIT,
@@ -13,7 +15,7 @@ public enum UnitClass {
             0, 30, 15, // LCK
             3, 20, 10, // DEF
             0, 20, 13, // RES
-           12, 20,  0, // CON
+           12, 25,  0, // CON
             5, 15,  0  // MOV
             ),
     CLERIC("Cleric", "cleric", MoveType.FOOT,
@@ -24,10 +26,10 @@ public enum UnitClass {
             0, 30, 45, // LCK
             0, 20,  8, // DEF
             6, 20, 50, // RES
-            4, 20,  0, // CON
+            4, 25,  0, // CON
             5, 15,  0  // MOV
             ),
-    MERCENARY("Mercenary", "mercenary", MoveType.FOOT,
+    MERCENARY("Merc", "mercenary", MoveType.FOOT,
            16, 60, 80, // HP
             3, 20, 40, // STR
             5, 20, 40, // SKL
@@ -35,7 +37,7 @@ public enum UnitClass {
             0, 30, 30, // LCK
             2, 20, 18, // DEF
             0, 20, 20, // RES
-            8, 20,  0, // CON
+            8, 25,  0, // CON
             5, 15,  0  // MOV
             );
     
@@ -50,7 +52,7 @@ public enum UnitClass {
         public final Attribute DEF;
         public final Attribute RES;
         public final Attribute CON;
-        public final Attribute MOV;
+        public final Attribute MOVE;
     
         UnitClass( String className, String spriteFileName, MoveType moveT,
                    int HPvalue,  int HPcap,  int HPgrowth,
@@ -60,11 +62,11 @@ public enum UnitClass {
                    int LCKvalue, int LCKcap, int LCKgrowth,
                    int DEFvalue, int DEFcap, int DEFgrowth,
                    int RESvalue, int REScap, int RESgrowth,
-                   int CONvalue, int CONcap, int CONgrowth,
+                   int CONvalue, int CONcap, int CONgrowth, 
                    int MOVvalue, int MOVcap, int MOVgrowth)
         {
             this.className = className;
-            this.spriteFileName = spriteFileName;
+            this.spriteFileName = Animation.getFilename(spriteFileName);
             this.moveT = moveT;
             HP  = new Attribute(AttributeType.HP,  HPvalue,  HPcap,  HPgrowth);
             STR = new Attribute(AttributeType.STR, STRvalue, STRcap, STRgrowth);
@@ -74,6 +76,26 @@ public enum UnitClass {
             DEF = new Attribute(AttributeType.DEF, DEFvalue, DEFcap, DEFgrowth);
             RES = new Attribute(AttributeType.RES, RESvalue, REScap, RESgrowth);
             CON = new Attribute(AttributeType.CON, CONvalue, CONcap, CONgrowth);
-            MOV = new Attribute(AttributeType.MOV, MOVvalue, MOVcap, MOVgrowth);
+            MOVE = new Attribute(AttributeType.MOV, MOVvalue, MOVcap, MOVgrowth);
+        }
+        
+        public Attribute get(AttributeType attributeType) {
+            switch(attributeType) {
+                case HP:
+                    return HP;
+                case STR:
+                    return STR;
+                case SKL:
+                    return SKL;
+                case SPD:
+                    return SPD;
+                case LCK:
+                    return LCK;
+                case DEF:
+                    return DEF;
+                case RES:
+                    return RES;
+            }
+            return HP;
         }
 }

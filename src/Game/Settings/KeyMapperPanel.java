@@ -17,7 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.LineBorder;
 
-public class KeyMapperPanel extends JPanel implements KeyListener {
+public class KeyMapperPanel extends JPanel implements KeyListener, Updateable {
     private static final int labelX = 10;
     private static final int panelX = 70;
     private static final int labelY = 42;
@@ -172,6 +172,10 @@ public class KeyMapperPanel extends JPanel implements KeyListener {
     }
     public void keyReleased(KeyEvent event) {
         
+    }
+    
+    public void update() {
+        updateKeyLists();
     }
     
     private static String formatKeyList(ArrayList<Integer> keyList) {

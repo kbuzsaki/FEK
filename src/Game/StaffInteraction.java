@@ -3,12 +3,21 @@
  */
 package Game;
 
+import Sprites.AnimationEffect;
+import Sprites.AnimationEffectFactory;
 import Sprites.AnimationMapUnit;
+import Sprites.CompletionListener;
 import Units.Unit;
+import java.util.ArrayList;
+import java.util.Collection;
 
 public class StaffInteraction {
     private Unit staffUser;
     private Unit target;
+    
+    private ArrayList<AnimationEffect> effectList = new ArrayList();
+    private boolean hasCasted = false;
+    private boolean hasExecuted = false;
     
     public StaffInteraction(Unit staffUser, Unit target) {
         this.staffUser = staffUser;
@@ -45,7 +54,28 @@ public class StaffInteraction {
         return staffUser.getEquipedStaff().getStatEndTotal(target);
     }
     
-    public void execute() {
+    public boolean hasCasted() {
+        return hasCasted;
+    }
+    public void setCasted() {
+        hasCasted = true;
+    }
+    
+    public boolean hasExecuted() {
+        return hasExecuted;
+    }
+    
+    public Collection<AnimationEffect> getEffects() {
+        return effectList;
+    }
+    
+    public void execute(final CompletionListener listener) {
         staffUser.getEquipedStaff().performAction(target);
+        hasExecuted = true;
+        
+        AnimationEffect effect = AnimationEffectFactory.newHealSmall();
+        effect.setCenteredOn(target.getMapAnim().getBounds());
+        effect.setCompletionListener(listener);
+        effectList.add(effect);
     }
 }

@@ -14,16 +14,23 @@
  */
 package Sprites.Panels;
 
+import Game.CursorMovementEvent;
+import Game.CursorMovementListener;
+import Game.DeselectionEvent;
+import Game.SelectionEvent;
+import Game.SelectionListener;
+import Sprites.Animateable;
 import Sprites.AnimationMapUnit;
+import Sprites.ColumnLayout;
 import Units.Unit;
 import Units.UnitClass;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Rectangle;
+import java.util.Random;
 import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 
-public class PanelInfoUnit extends JPanel {
+public class PanelInfoUnit extends JPanel implements Animateable, CursorMovementListener, SelectionListener {
     private PanelInfoStats statsPanel; 
     private PanelInfoInventory inventoryPanel;
     private PanelHealth healthInfoPanel;
@@ -31,22 +38,19 @@ public class PanelInfoUnit extends JPanel {
     private AnimationMapUnit unitInfoAnim;
     
     
-    public PanelInfoUnit(Dimension size) {
-        setSize(size);
-        setPreferredSize(getSize());
+    public PanelInfoUnit() {
         setBorder(new LineBorder(Color.BLUE));
         setLayout(null);
         
-        statsPanel = new PanelInfoStats(
-                new Rectangle(getWidth()/4,0,getWidth()*3/16,getHeight()));    
-        inventoryPanel = new PanelInfoInventory(
-                new Rectangle(getWidth()*7/16, 0, getWidth()*5/16, getHeight()));
+        statsPanel = new PanelInfoStats();  
+        inventoryPanel = new PanelInfoInventory();
         
         infoPanel = new JPanel();
-        infoPanel.setBounds(0,0, getWidth()/4, getHeight());
+            infoPanel.setOpaque(false);
+            infoPanel.setLayout(new ColumnLayout(0,0,5,ColumnLayout.CENTER));
         
         healthInfoPanel = new PanelHealth();
-        unitInfoAnim = new AnimationMapUnit(UnitClass.BANDIT.spriteFileName);
+        unitInfoAnim = new AnimationMapUnit(UnitClass.BANDIT.spriteFileName, null);
         unitInfoAnim.setFocus();
         
         infoPanel.add(healthInfoPanel);
@@ -57,14 +61,48 @@ public class PanelInfoUnit extends JPanel {
         add(infoPanel);
     }
     
-    public void setUnit(Unit unit) {
+    @Override
+    public void setSize(int width, int height) {
+        super.setSize(width, height);
+        
+        statsPanel.setLocation(getWidth()/4, 0);
+        statsPanel.setSize(getWidth()*3/16, getHeight());
+        
+        inventoryPanel.setLocation(getWidth()*7/16, 0);
+        inventoryPanel.setSize(getWidth()*5/16, getHeight());
+        
+        infoPanel.setBounds(0,0, getWidth()/4, getHeight());
+        
+    }
+    @Override
+    public void setSize(Dimension size) {
+        setSize(size.width, size.height);
+    }
+    
+    @Override
+    public void handleCursorMovement(CursorMovementEvent event) {
+        if(!event.getCursor().hasSelectedUnit())
+        {
+            setUnit(event.getUnit());
+        }
+    }
+    @Override
+    public void handleSelection(SelectionEvent event) {
+        setUnit(event.getSelectedUnit());
+    }
+    @Override
+    public void handleDeselection(DeselectionEvent event) {
+        setUnit(event.getCursor().getFocusUnit());
+    }
+    
+    private void setUnit(Unit unit) {
         
         if(unit != null)
         {
             statsPanel.setValues(unit.getStats());
-            inventoryPanel.setValues(unit.getItems());
+            inventoryPanel.setValues(unit.getInventory());
             healthInfoPanel.setFaction(unit.getFaction());
-            healthInfoPanel.setValues(unit.getName(), unit.getStats().getHP().get(), unit.getStats().getHP().getValue());
+            healthInfoPanel.setValues(unit.getName(), unit.getStats().getHP().get(), unit.getStats().getHP().getValT());
             unitInfoAnim.setVisible(true);
             unitInfoAnim.loadAnimation(unit.getMapAnim());
         }
@@ -73,7 +111,7 @@ public class PanelInfoUnit extends JPanel {
             clear();
         }
     }
-    public void clear() {
+    private void clear() {
         statsPanel.clear();
         inventoryPanel.clear();
         
@@ -81,7 +119,9 @@ public class PanelInfoUnit extends JPanel {
         unitInfoAnim.setVisible(false);
     }
     
+    @Override
     public void setTick(int tick) {
         unitInfoAnim.setTick(tick);
+        unitInfoAnim.repaint();
     }
 }

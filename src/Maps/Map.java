@@ -3,8 +3,6 @@
  */
 package Maps;
 
-import Game.Game;
-import Sprites.BoardElement;
 import Sprites.ImageComponent;
 import Units.Faction;
 import Units.MoveType;
@@ -20,7 +18,7 @@ public class Map {
     private Terrain[][] terrainIndex;
     private Unit[][] unitIndex;
     public final ImageComponent image;
-    private final String fileName;
+    private final String filename;
     public final int height; // height of the map in tiles
     public final int width; // width of the map in tiles
 
@@ -29,10 +27,9 @@ public class Map {
         int h = 0;
         image = new ImageComponent("resources/maps/" + fileName + ".png");
         image.setVisible(true);
-        this.fileName = "resources/maps/" + fileName + ".txt";
-        BufferedReader bufferedReader = null;
-        try {
-            bufferedReader = new BufferedReader(new FileReader(this.fileName));
+        this.filename = "resources/maps/" + fileName + ".txt";
+        
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(this.filename))){
             String line;
             
             while ((line = bufferedReader.readLine()) != null)
@@ -43,12 +40,13 @@ public class Map {
                     w = line.length();
                 }
             }
-        } catch (IOException ex) { System.out.println("failed to load map");}
-        height = h;
+        } catch (IOException ex) { System.out.println("failed to load map"); }
+        
         width = w;
+        height = h;
         terrainIndex = new Terrain[width][height];
         unitIndex = new Unit[width][height];
-        loadMap(this.fileName);
+        loadMap(this.filename);
         
         String line;
         for (int y = 0; y < height; y++)
@@ -62,15 +60,12 @@ public class Map {
     }
     
     // map load functions
-    private void loadMap(String fileName) {
+    private void loadMap(String filename) {
 
-        BufferedReader mapReader = null;
-        try {
-            
-            mapReader = new BufferedReader(new FileReader(fileName));
-            String line = null;
+        try (BufferedReader mapReader = new BufferedReader(new FileReader(filename))) {
 
             int h = 0;
+            String line;
             while ((line = mapReader.readLine()) != null) 
             {
                 for (int w = 0; w < width; w++)
@@ -92,31 +87,14 @@ public class Map {
         return Terrain.PLAINS;
     }
     // map save functions
-    public void saveMap (String fileName) {
-        BufferedWriter bufferedWriter = null;
-
-        try {
-
-            //Construct the BufferedWriter object
-            bufferedWriter = new BufferedWriter(new FileWriter(fileName));
-
+    private void saveMap (String filename) {
+         try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filename))) {
             bufferedWriter.write(writeMap());
-
         } catch (IOException ex) {
             ex.printStackTrace();
-        } finally {
-            //Close the BufferedWriter
-            try {
-                if (bufferedWriter != null) {
-                    bufferedWriter.flush();
-                    bufferedWriter.close();
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
         }
     }
-    public String writeMap () {
+    private String writeMap () {
         String map = "";
         for (int h = 0; h < terrainIndex[0].length; h++)
         {
@@ -124,7 +102,7 @@ public class Map {
         }
         return map;
     }
-    public String writeLine (int h) {
+    private String writeLine (int h) {
         String line = "";
         for (int w = 0; w < terrainIndex.length; w++)
         {
@@ -134,40 +112,37 @@ public class Map {
     }
     
     // load / assignment functions for units
-    public boolean addUnit(Unit unit) {
-        if(getUnitAt(unit.getPosition()) != null)
+    public void addUnit(Unit unit) {
+        if(!unitAt(unit.getPosition()))
         {
-            Game.log("Attempting to assign two units to the same place");
-            return false;
+            setUnitAt(unit.getPosition(), unit);
         }
         else
         {
-            unitIndex[unit.getX()][unit.getY()] = unit;
-//            unit.setTerrain(getTerrainAt(unit.getPosition()));
-            return true;
+            throw new IllegalArgumentException(
+                    "Attempting to assign two units to the same space: (" 
+                    + unit.getX() + ", " + unit.getY() + ")");
         }
     }
     public void removeUnit(Unit unit) {
-        unitIndex[unit.getX()][unit.getY()] = null;
+        setUnitAt(unit.getPosition(), null);
     }
-    public boolean moveUnit(Point startPosition, Point endPosition) {
-        if (unitIndex[endPosition.x][endPosition.y] == null) // if the tile is not occupied
+    public void moveUnit(Point startPosition, Point endPosition) {
+        if(startPosition != endPosition)
         {
-            // move the unit
-            unitIndex[endPosition.x][endPosition.y] = unitIndex[startPosition.x][startPosition.y];
-            unitIndex[startPosition.x][startPosition.y] = null;
-            
-            // the unit gets its terrain directly from the map (has map field)
-//            unitIndex[endPosition.x][endPosition.y].setTerrain(getTerrainAt(endPosition));
-            return true; // the unit can move
-        }
-        else if (startPosition == endPosition) // if the tile is the same tile as the start
-        {
-            return true; // the unit does not need to move
-        }
-        else // the target point is occupied by another unit
-        {
-            return false; // the unit cannot move
+            if (!unitAt(endPosition)) // if the tile is not occupied
+            {
+                // move the unit
+                setUnitAt(endPosition, getUnitAt(startPosition));
+                setUnitAt(startPosition, null);
+            }
+            else // the target point is occupied by another unit
+            {
+                throw new IllegalArgumentException(
+                        "Attempting to move to an occupied space: " 
+                        + startPosition.toString() + " to " 
+                        + endPosition.toString());
+            }
         }
     }
     
@@ -191,8 +166,8 @@ public class Map {
     }
     
     private boolean isInBounds(int x, int y) {
-        if ((x >= 0) &&(x <= width)
-          &&(y >= 0) &&(y <= height))
+        if ((x >= 0) &&(x < width)
+          &&(y >= 0) &&(y < height))
         {
             return true;
         }
@@ -205,7 +180,8 @@ public class Map {
     public Square getSquareAt(int x, int y) {
         return new Square(new Point(x, y),
                           unitIndex[x][y],
-                          terrainIndex[x][y]);
+                          terrainIndex[x][y],
+                          getTerrainIconAt(x,y));
     }
     public Square getSquareAt(Point position) {
         return getSquareAt(position.x, position.y);
@@ -243,6 +219,25 @@ public class Map {
         return getTerrainIconAt(position.x, position.y);
     }
     
+    /**
+     * Returns true if there is a unit at the given coordinates.
+     * @param x  the x coordinate, must be between 0 (inclusive) and width (exclusive)
+     * @param y  the y coordinate, must be between 0 (inclusive) and height (exclusive)
+     * @return true if there is a unit at the coordinates.
+     */
+    public boolean unitAt(int x, int y) {
+        return (getUnitAt(x, y) != null);
+    }
+    /**
+     * Returns true if there is a unit at the given point.
+     * @param position  the point to check. 
+     * x must be between 0 (inclusive) and width (exclusive)
+     * y must be between 0 (inclusive) and height (exclusive)
+     * @return true if there is a unit at the coordinates.
+     */
+    public boolean unitAt(Point position) {
+        return unitAt(position.x, position.y);
+    }
     public Unit getUnitAt(int x, int y) {
         if (isInBounds(x,y))
         {
@@ -255,6 +250,15 @@ public class Map {
     }
     public Unit getUnitAt(Point position) {
         return getUnitAt(position.x, position.y);
+    }
+    private void setUnitAt(int x, int y, Unit unit) {
+        if(isInBounds(x, y))
+        {
+            unitIndex[x][y] = unit;
+        }
+    }
+    private void setUnitAt(Point position, Unit unit) {
+        setUnitAt(position.x, position.y, unit);
     }
     public ArrayList<Unit> getUnitList() {
         ArrayList<Unit> unitList = new ArrayList();

@@ -3,6 +3,8 @@
  */
 package Game;
 
+import Sprites.Animation;
+import Sprites.AnimationFactory;
 import Units.Items.Equipment;
 import Units.Unit;
 
@@ -48,7 +50,11 @@ public class Battle {
     }
     
     private static int getDamage(Unit attacking, Unit defending) {
-        return attacking.getDamage(defending) - defending.getReduction(attacking);
+        if(attacking.hasEquipedWeapon())
+        {
+            return attacking.getDamage(defending) - defending.getReduction(attacking);
+        }
+        return 0;
     }
     public int getAttackerDamage() {
         return getDamage(attacker, defender);
@@ -58,10 +64,14 @@ public class Battle {
     }
     
     private static int getAccuracy(Unit attacking, Unit defending) {
-        int accuracy = attacking.getHit(defending);
-        int avoid = defending.getAvoid(attacking);
-        return (accuracy - avoid);
-//        return attacking.getHit() - defending.getAvoid();
+        if(attacking.hasEquipedWeapon())
+        {
+            int accuracy = attacking.getHit(defending);
+            int avoid = defending.getAvoid(attacking);
+            return (accuracy - avoid);
+    //        return attacking.getHit() - defending.getAvoid();
+        }
+        return 0;
     }
     public int getAttackerAccuracy() {
         return getAccuracy(attacker, defender);
@@ -71,7 +81,11 @@ public class Battle {
     }
     
     private static int getCriticalChance(Unit attacking, Unit defending) {
-        return attacking.getCriticalChance(defending) - defending.getCriticalAvoid(attacking);
+        if(attacking.hasEquipedWeapon())
+        {
+            return attacking.getCriticalChance(defending) - defending.getCriticalAvoid(attacking);
+        }
+        return 0;
     }
     public int getAttackerCriticalChance() {
         return getCriticalChance(attacker, defender);
@@ -81,14 +95,18 @@ public class Battle {
     }
     
     private static int getAttackNumber(Unit attacking, Unit defending) {
-        if((attacking.getAttackSpeed(defending) - defending.getAttackSpeed(attacking)) > 4)
+        if(attacking.hasEquipedWeapon())
         {
-            return attacking.getNumberAttacks(defending) * 2;
+            if((attacking.getAttackSpeed(defending) - defending.getAttackSpeed(attacking)) > 4)
+            {
+                return attacking.getNumberAttacks(defending) * 2;
+            }
+            else
+            {
+                return attacking.getNumberAttacks(attacking);
+            }
         }
-        else
-        {
-            return attacking.getNumberAttacks(attacking);
-        }
+        return 0;
     }
     public int getAttackerAttackNumber() {
         return getAttackNumber(attacker, defender);
@@ -97,11 +115,30 @@ public class Battle {
         return getAttackNumber(defender, attacker);
     }
     
+    private static Animation getWeaponTriangleIndicator(Unit attacking, Unit defending) {
+        if(attacking.hasEquipedWeapon())
+        {
+            if(attacking.getEquipedWeapon().hasWeaponTriangleAdvantage(defending))
+                return AnimationFactory.newArrowUp();
+            else if(attacking.getEquipedWeapon().hasWeaponTriangleDisadvantage(defending))
+                return AnimationFactory.newArrowDown();
+        }
+        return AnimationFactory.newBlankAnimation();
+    }
+    public Animation getAttackingWeaponTriangleIndicator() {
+        return getWeaponTriangleIndicator(attacker, defender);
+    }
+    public Animation getDefendingWeaponTriangleIndicator() {
+        return getWeaponTriangleIndicator(defender, attacker);
+    }
+    
     public boolean isFinished() {
-        return  (attacker.isDead())
+        boolean isFinished =  (attacker.isDead())
              || (defender.isDead())
              || ( (( attackerAttacks>= getAttackerAttackNumber()) || !attacker.canAttack(defender))
                && (( defenderAttacks>= getDefenderAttackNumber()) || !defender.canAttack(attacker)) );
+        Game.logDebug("Battle is finished: " + isFinished);
+        return isFinished;
     }
     
     private Attack attack(Unit attacking, Unit defending) {
@@ -112,8 +149,8 @@ public class Battle {
         if (Game.getRandNum() < getAccuracy(attacking, defending)) // if hits
         {
             isHit = true;
-            attacking.getEquipedWeapon().use();
-            Game.log(attacking.getName() + " hits " + defending.getName());
+            attacking.getEquipedWeapon().decrementUses();
+            Game.logInfo(attacking.getName() + " hits " + defending.getName());
             if (Game.getRandNum() < getCriticalChance(attacking, defending)) // if crits
             {
                 isCrit = true;
@@ -121,7 +158,7 @@ public class Battle {
         }
         else // else misses
         {
-            Game.log(attacking.getName() + " misses " + defending.getName());
+            Game.logInfo(attacking.getName() + " misses " + defending.getName());
         }
         int damage = 0;
         

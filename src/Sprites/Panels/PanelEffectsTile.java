@@ -7,14 +7,32 @@
  */
 package Sprites.Panels;
 
+import Game.CancelledMovementEvent;
+import Game.DeselectionEvent;
+import Game.Event.MoveCompletionEvent;
+import Game.Event.MoveEvent;
+import Game.SelectionEvent;
+import Game.SelectionListener;
+import Game.UnitMovementListener;
 import Sprites.TileImage;
 import java.awt.Point;
 import java.util.ArrayList;
 
-public class PanelEffectsTile extends PanelEffects{
+public class PanelEffectsTile extends PanelEffects implements SelectionListener {
     
-    public PanelEffectsTile(int width, int height) {
-        super(width, height);
+    public PanelEffectsTile() {
+    }
+    
+    @Override
+    public void handleSelection(SelectionEvent event) {
+        updateMoveGraphics(
+                event.getSelectedUnit().getPointsInRange(), 
+                event.getSelectedUnit().getAttackPointsInMoveRange(),
+                event.getSelectedUnit().getStaffPointsInMoveRange());
+    }
+    @Override
+    public void handleDeselection(DeselectionEvent event) {
+        reset();
     }
     
     public void updateMoveGraphics(ArrayList<Point> moveTiles, 

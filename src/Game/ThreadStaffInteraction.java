@@ -4,48 +4,81 @@
 package Game;
 
 import Game.Sound.SoundManager;
-import Sprites.ThreadTick;
+import Sprites.AnimationEffect;
+import Sprites.CompletionEvent;
+import Sprites.CompletionNotifier;
+import Sprites.Panels.PanelHealthInteraction;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class ThreadStaffInteraction extends Thread {
-    private static final int INITIAL_DELAY = 500;
-    private static final int BATTLE_DELAY = 20;
-    private static final int BAR_FILL_DELAY = 10;
+public class ThreadStaffInteraction extends ThreadInteraction {
     
-    private Level level;
-    private SoundManager soundManager;
     private StaffInteraction staffInteraction;
     
-    private ThreadTick tickThread;
-    private boolean isFinished = false;
-    
-    public ThreadStaffInteraction(Level level, SoundManager soundManager, StaffInteraction staffInteraction) {
+    public ThreadStaffInteraction(Level level, SoundManager soundManager, 
+            PanelHealthInteraction interactionHealthPanel, StaffInteraction staffInteraction) {
+        super(level, soundManager, interactionHealthPanel);
+        this.staffInteraction = staffInteraction;
         
+        setName("StaffInteraction: " + staffInteraction.getStaffUser().getName() 
+                + " and " + staffInteraction.getTarget().getName());
     }
     
-    public void run() {
-        // TODO: staff interaction thread graphics
-        try {
-                sleep(INITIAL_DELAY);
-        } catch (InterruptedException ex) {}
-        
-        runStaffInteractionLoop();
+    @Override
+    protected void beginInteraction() {
+        interactionHealthPanel.setValues(staffInteraction.getTarget());
+        interactionHealthPanel.open((staffInteraction.getStaffUser().getY() + staffInteraction.getTarget().getY()) / 2);
     }
-    
-    private void runStaffInteractionLoop() {
-        while(!isFinished) 
+    @Override
+    protected void endInteraction() {
+        interactionHealthPanel.delayedClose();
+        level.getCursor().endAction();
+    }
+    @Override
+    protected void processInteraction() {
+        if(!staffInteraction.hasCasted())
         {
-            if((tickThread == null) || tickThread.isFinished())
+            staffInteraction.getStaffUser().getMapAnim().actionFocus(this);
+            staffInteraction.setCasted();
+        }
+        else if(!staffInteraction.hasExecuted())
+        {
+            CompletionNotifier completionNotifier = new CompletionNotifier(this);
+            
+            staffInteraction.execute(completionNotifier);
+            interactionHealthPanel.update(50, completionNotifier);
+            
+            completionNotifier.addNotifiers(staffInteraction.getEffects());
+            completionNotifier.addNotifier(interactionHealthPanel);
+            completionNotifier.beginListening();
+            
+            ExecutorService threadPool = Executors.newCachedThreadPool();
+            
+            for(final AnimationEffect effect : staffInteraction.getEffects())
             {
-                processStaffInteraction();
+                threadPool.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(effect.getDelay() > 0)
+                        {
+                            try {
+                                sleep(effect.getDelay());
+                            } catch(InterruptedException ex) {
+                                
+                            }
+                        }
+                        
+                        level.addAnimationEffect(effect);
+                    }
+                });
             }
             
-            try {
-                sleep(BATTLE_DELAY);
-            } catch (InterruptedException ex) {}
         }
     }
     
-    private void processStaffInteraction() {
-        
+    @Override
+    protected boolean interactionIsFinished() {
+        return staffInteraction.hasCasted() && staffInteraction.hasExecuted();
     }
+    
 }
